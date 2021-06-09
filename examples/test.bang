@@ -1,0 +1,7 @@
+proc main() 
+{
+   write("Hello, World!");
+   write("Hello, World!");
+   write("Hello, World!");
+   write("Hello, World!");
+}

@@ -1,0 +1,11 @@
+var i: i64;
+
+proc main() {
+  write("Begin\n");
+  i = 0;
+  while i < 10 {
+    write("Hey!\n");
+    i = i + 1;
+  }
+  write("End\n");
+}
