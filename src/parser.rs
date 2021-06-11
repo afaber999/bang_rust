@@ -64,10 +64,43 @@ impl<'a> Parser<'a> {
         println!("parse_string_literal");
 
         let token = self.lexer.expect_token_next(TokenKind::Literal);
-        let literal = self.lexer.get_string(token.text_start+1, token.text_len-2);
 
-        // AF TODO: escaping etc
-        literal
+        let mut i = token.text_start + 1;
+        let last_index = i + token.text_len-2;
+        
+        let mut literal_chars = Vec::new();
+
+        while i < last_index   {
+            let ch = self.lexer.get_char(i);
+            if ch == '\\' {
+                if i + 1 >= last_index {
+                    let mut loc = token.loc;
+                    loc.col += i + 1;
+                    let loc_msg = fmt_loc_err( self.filename_locations, &token.loc);
+                    user_error!("{} unfinished string literal escape sequence", loc_msg);
+                }
+    
+                let ch = self.lexer.get_char(i+1); 
+                match ch {
+                        '0' => { literal_chars.push('\0');  
+                    }, 
+                        'n' => { literal_chars.push('\n');  
+                    },
+                    _ => {
+                        let mut loc = token.loc;
+                        loc.col += i + 2;
+                        let loc_msg = fmt_loc_err( self.filename_locations, &token.loc);
+                        user_error!("{} unknown escape character  '{}'", loc_msg, ch );
+                    }
+                }
+                i += 2;
+            } else {
+                literal_chars.push(ch);
+                i += 1;
+            }
+        }
+
+        literal_chars.into_iter().collect()
     }
 
 
@@ -95,11 +128,11 @@ impl<'a> Parser<'a> {
         let args = self.parse_func_call_args();
 
         if name =="write" {
-            // AF TODO FILL IN ACUAL EXPRESSION
+            // AF TODO FILL IN ATCUAL EXPRESSION
             return AstFunCall { name, args, loc : token.loc };
         }
         let loc_msg = fmt_loc_err( self.filename_locations, &token.loc);
-        user_error!("{} unknoen function namme '{}'", loc_msg, &name);
+        user_error!("{} unknown function namme '{}'", loc_msg, &name);
     }
 
     fn parse_expr(&mut self) -> AstStatement {

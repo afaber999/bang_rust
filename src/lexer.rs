@@ -147,7 +147,11 @@ impl<'a> Lexer<'a> {
     pub fn get_string(&mut self,  text_start:usize, text_len:usize) -> String {
         self.content[text_start..text_start+text_len].into_iter().collect()
     }
- 
+    pub fn get_char(&mut self,  index:usize) -> char {
+        self.content[index]
+    }
+
+
     pub fn get_location(&self) -> Location {
         Location {
             row: self.row,
