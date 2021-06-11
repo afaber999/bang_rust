@@ -1,10 +1,13 @@
 use std::{usize};
+use crate::location::FileNameLocations;
 use crate::location::Location;
+use crate::location::fmt_loc_err;
 use crate::token::Token;
-use crate::token::TokenType;
+use crate::token::TokenKind;
+use crate::token::token_kind_name;
 
-
-pub struct Lexer {
+#[derive(Debug)]
+pub struct Lexer<'a> {
     content    : Vec<char>,
     cur_idx    : usize,
     last_idx   : usize,
@@ -14,11 +17,16 @@ pub struct Lexer {
     row        : usize,
 
     file_idx   : usize,
+    filename_locations : &'a FileNameLocations,
+    peek_token : Option<Token>,
 }
 
-impl Lexer {
-    pub fn new( content : String, file_idx : usize ) -> Self {
+impl<'a> Lexer<'a> {
+    pub fn new( content : String, input_file_name : String, filename_locations : &'a FileNameLocations ) -> Self {
        
+        // add to fileame locations
+        let file_idx =  filename_locations.insert(input_file_name);
+
         let mut result = Self {
             content   : content.chars().collect(),
             cur_idx   : 0,
@@ -27,6 +35,8 @@ impl Lexer {
             line_end  : 0,
             row       : 0,
             file_idx,
+            filename_locations,
+            peek_token:None
         };
         result.set_line_end();
         //result.dump();
@@ -94,7 +104,6 @@ impl Lexer {
         println!("last_idx  :{:?}", self.last_idx);
         println!("first_char:{:?}", self.content[self.line_start]);
         println!("last_char :{:?}", self.content[self.line_end]);
-
     }
 
     pub fn next_line(&mut self) {
@@ -147,7 +156,7 @@ impl Lexer {
         }
     }
 
-    fn extract_token(&mut self, token_type:TokenType, token_size:usize) ->Token {
+    fn extract_token(&mut self, token_type:TokenKind, token_size:usize) ->Token {
 
         assert!(self.line_len() >= token_size);
 
@@ -161,7 +170,19 @@ impl Lexer {
         result
     }
 
+    pub fn peek(&mut self) -> Option<Token>{
+        self.peek_token = self.next();
+        self.peek_token        
+    }
+
+
     pub fn next(&mut self) -> Option<Token>{
+        // works for now, need to refactor later
+        if self.peek_token.is_some() {
+            let token = self.peek_token;
+            self.peek_token = None;
+            return token;
+        }
 
         while self.is_line_empty() {
             self.next_line();
@@ -176,18 +197,17 @@ impl Lexer {
 
 
         let mut hardcoded_tokens  = std::collections::HashMap::new();
-        hardcoded_tokens.insert("(", TokenType::OpenParen );
-        hardcoded_tokens.insert(")", TokenType::CloseParen );
-        hardcoded_tokens.insert("{", TokenType::OpenCurly );
-        hardcoded_tokens.insert("}", TokenType::CloseCurly );
-        hardcoded_tokens.insert(";", TokenType::Semicolon );
+        hardcoded_tokens.insert("(", TokenKind::OpenParen );
+        hardcoded_tokens.insert(")", TokenKind::CloseParen );
+        hardcoded_tokens.insert("{", TokenKind::OpenCurly );
+        hardcoded_tokens.insert("}", TokenKind::CloseCurly );
+        hardcoded_tokens.insert(";", TokenKind::Semicolon );
 
         for (token_text, token_type) in hardcoded_tokens.iter() {
             if self.starts_with( &token_text ) {
                 return Some( self.extract_token(*token_type, token_text.len()) );
             }
         }
-
 
         // name tokens
         let mut token_len = 0;
@@ -198,7 +218,7 @@ impl Lexer {
             token_len += 1;
         }
         if token_len > 0  {
-            return Some( self.extract_token(TokenType::Name, token_len ));
+            return Some( self.extract_token(TokenKind::Name, token_len ));
         }
 
         // string literal
@@ -211,7 +231,7 @@ impl Lexer {
 
             if pos < self.line_end {
                 let token_len = pos - self.cur_idx+ 1;
-                let token = self.extract_token(TokenType::Literal, token_len);
+                let token = self.extract_token(TokenKind::Literal, token_len);
                 return Some( token );
             } else {
                 panic!("Missing closing character on string literal");
@@ -227,6 +247,37 @@ impl Lexer {
         //     self.cur_idx, 
         //     self.line_len(), 
         //     self.get_location() ) )
+    }
+
+    pub fn expect_keyword(&mut self, name: &str) -> Token {
+
+        let token = self.expect_token_next(TokenKind::Name);
+        let token_name = self.get_string( token.text_start, token.text_len );
+        
+        if token_name != name {
+            let loc_msg = fmt_loc_err( self.filename_locations, &token.loc);
+            user_error!("{} expect keyword '{}' but got '{}'", loc_msg, name, token_name);
+        }
+
+        token
+    }
+
+    pub fn expect_token_next(&mut self, token_type : TokenKind) -> Token {
+
+        if let Some( token ) = self.next() {
+            if token.token_type != token_type {
+                let loc_msg = fmt_loc_err( self.filename_locations, &token.loc);
+                user_error!("{} Expected token {} but got {}",
+                    loc_msg,
+                    token_kind_name(token_type),
+                    token_kind_name(token.token_type));
+
+            }
+            return token;
+        } 
+
+        let loc_msg = fmt_loc_err( self.filename_locations, &self.get_location());
+        user_error!("{} reached end of input, expected token type: {}", loc_msg, token_kind_name(token_type));
     }
 }
 

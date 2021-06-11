@@ -1,17 +1,21 @@
 use anyhow::{Result};
-use std::{env, path::PathBuf};
-use std::convert::From;
+use std::{convert::From, env, panic, path::PathBuf};
+
+#[macro_use]
+pub mod errors;
+
 
 pub mod lexer;
 pub mod location;
+pub mod parser;
+pub mod token;
+pub mod basm_compiler;
+pub mod basm_instructions;
 
 use lexer::Lexer;
-use token::token_type_name;
 use location::FileNameLocations;
-
-use crate::location::fmt_loc_err;
-
-pub mod token;
+use parser::Parser;
+use basm_compiler::BasmCompiler;
 
 fn usage(program_name: &str) {
     println!("Usage: {} [OPTIONS] <input.bang>", program_name);
@@ -20,7 +24,19 @@ fn usage(program_name: &str) {
     println!("    -h                                Print this help to stdout");
 }
 
+
 fn main() -> Result<()> {
+    panic::set_hook(Box::new(|panic_info| {
+        
+        if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
+            let msg = s.to_string();
+            eprintln!("{:?}", msg);
+        } else {
+
+            eprintln!("{}", &panic_info);
+        }
+        std::process::exit(-1);
+    }));
 
     let filename_locations = FileNameLocations::new();
 
@@ -59,6 +75,7 @@ fn main() -> Result<()> {
 
     println!("Input filename : {:?}", input_file_path.as_os_str());
     println!("Output filename: {:?}", output_file_path.as_os_str());
+    let input_file_name = input_file_path.to_str().unwrap().to_string();
 
     let input_file = std::fs::read_to_string(input_file_path)?;
     print!( "{}", input_file);
@@ -67,26 +84,18 @@ fn main() -> Result<()> {
     //     println!("{}", line?);
 
     // }
-    let todofix = "file".to_string();
-    let idx =  filename_locations.insert(todofix);    
+    let lexer = Lexer::new(input_file, input_file_name, &filename_locations);
+    let mut parser = Parser::new(lexer, &filename_locations);
+    let proc_def = parser.parse();
 
-    let mut tokenizer = Lexer::new(input_file, idx);
+    let mut basm_compiler = BasmCompiler::new();
 
-    while let Some(nt) = tokenizer.next() {
+    basm_compiler.compile( &proc_def);
+    basm_compiler.write_to_bm(&output_file_path);
 
-        // {
-        //     let tok_str = tokenizer.get_string( nt.text_start, nt.text_len );
-        //     println!("next line row:{} indx: {} :{}:", &nt.loc.row, &nt.loc.col, tok_str );
-        // }
-        let tok_str = tokenizer.get_string( nt.text_start, nt.text_len );
-        let tok_type_name = token_type_name(nt.token_type);
+    //basm_compiler.save(&output_file_path);
 
-        let err_str = fmt_loc_err(&filename_locations, &nt.loc);
-        println!("TOKEN {} {}  :{}:", &tok_type_name, &err_str, &tok_str );
-       // tokenizer.dump();
-        //tokenizer.next_line();
-    }
-    
+
     println!("Done");
     Ok(())
 }

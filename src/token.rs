@@ -1,8 +1,8 @@
 use crate::location::Location;
 use enum_iterator::IntoEnumIterator;
 
-#[derive(Debug, Clone, Copy, IntoEnumIterator)]
-pub enum TokenType {
+#[derive(Debug, Clone, Copy, IntoEnumIterator, PartialEq)]
+pub enum TokenKind {
     Name,
     OpenParen,
     CloseParen,
@@ -13,28 +13,28 @@ pub enum TokenType {
 }
 
 
-pub fn token_type_name(token_type : TokenType ) -> &'static str {
+pub fn token_kind_name(token_type : TokenKind ) -> &'static str {
     match token_type {
-        TokenType::Name => "Name",
-        TokenType::OpenParen => "OpenParen",
-        TokenType::CloseParen => "CloseParen",
-        TokenType::OpenCurly => "OpenCurly",
-        TokenType::CloseCurly => "CloseCurly",
-        TokenType::Semicolon => "Semicolon",
-        TokenType::Literal => "Literal",
+        TokenKind::Name => "Name",
+        TokenKind::OpenParen => "OpenParen",
+        TokenKind::CloseParen => "CloseParen",
+        TokenKind::OpenCurly => "OpenCurly",
+        TokenKind::CloseCurly => "CloseCurly",
+        TokenKind::Semicolon => "Semicolon",
+        TokenKind::Literal => "Literal",
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Token {
-    pub token_type : TokenType,
+    pub token_type : TokenKind,
     pub text_start : usize,
     pub text_len   : usize,
     pub loc : Location,
 }
 
 impl Token {
-    pub fn new( token_type: TokenType, text_start: usize, text_len: usize , loc: Location)->Self {
+    pub fn new( token_type: TokenKind, text_start: usize, text_len: usize , loc: Location)->Self {
         Self {
             token_type,
             text_start,

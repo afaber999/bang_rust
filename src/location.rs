@@ -7,11 +7,10 @@ pub struct Location {
     pub file_idx: usize,
 }
 
-
+#[derive(Debug, Default)]
 pub struct FileNameLocations {
     file_names : RefCell< Vec<String>>,
 }
-
 
 impl FileNameLocations {
     pub fn new() -> Self {
@@ -30,11 +29,18 @@ impl FileNameLocations {
     }
 }
 
-
-
 pub fn fmt_loc_err( file_locations: &FileNameLocations, loc: &Location) -> String {
     format!( "{}:{}:{}: error:", 
         file_locations.get(loc.file_idx),
         loc.row + 1,
         loc.col + 1)
+}
+
+// AF TODO CHECK IF NEEDED
+pub fn fmt_loc_err_msg( file_locations: &FileNameLocations, loc: &Location, msg: &str) -> String {
+    format!( "{}:{}:{}: error: {}", 
+        file_locations.get(loc.file_idx),
+        loc.row + 1,
+        loc.col + 1,
+        msg)
 }
