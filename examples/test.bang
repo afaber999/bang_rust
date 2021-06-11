@@ -1,9 +1,4 @@
 proc main() 
 {
-    if ( true ) {
-        write("Hello, World!");
-    }
-    write("Hello, World!");
-    write("Hello, World!");
     write("Hello, World!");
 }

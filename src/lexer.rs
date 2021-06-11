@@ -148,7 +148,7 @@ impl<'a> Lexer<'a> {
         self.content[text_start..text_start+text_len].into_iter().collect()
     }
  
-    fn get_location(&self) -> Location {
+    pub fn get_location(&self) -> Location {
         Location {
             row: self.row,
             col: self.cur_idx - self.line_start,

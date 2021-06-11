@@ -1,11 +1,23 @@
-use crate::{lexer::Lexer, location::{FileNameLocations, fmt_loc_err}, token::{TokenKind, token_kind_name}};
+use crate::{lexer::Lexer, location::{FileNameLocations, Location, fmt_loc_err}, token::{TokenKind, token_kind_name}};
+
+#[derive(Debug, Default)]
+pub struct AstExpr {
+    pub kind : AstExprKind,
+}
+
+#[derive(Debug, Default)]
+pub struct AstStatement{
+    pub expr : AstExpr,
+} 
 
 
 #[derive(Debug)]
 pub struct AstFunCall {
+    pub loc  : Location,
     pub name : String,
-    pub args : String,
+    pub args : Vec<AstExpr>,
 }
+
 
 #[derive(Debug)]
 pub enum AstExprKind {
@@ -20,17 +32,6 @@ pub enum AstExprKind {
 impl Default for AstExprKind {
     fn default() -> Self { AstExprKind::Empty }
 }
-
-#[derive(Debug, Default)]
-pub struct AstExpr {
-    pub kind : AstExprKind,
-}
-
-
-#[derive(Debug, Default)]
-pub struct AstStatement{
-    pub expr : AstExpr,
-} 
 
 #[derive(Debug, Default)]
 pub struct AstBlock{
@@ -58,13 +59,83 @@ impl<'a> Parser<'a> {
     }
 
 
-    fn parse_expr(&mut self) -> AstStatement {
+    fn parse_string_literal(&mut self) -> String {
 
-        if let Some( token ) = self.lexer.next() {
-            let name = self.lexer.get_string(token.text_start, token.text_len);
-            println!("GOT TOKEN FOR EXPR {} Name: {}", token_kind_name(token.token_type), name);
+        println!("parse_string_literal");
+
+        let token = self.lexer.expect_token_next(TokenKind::Literal);
+        let literal = self.lexer.get_string(token.text_start+1, token.text_len-2);
+
+        // AF TODO: escaping etc
+        literal
+    }
+
+
+    fn parse_func_call_args(&mut self) -> Vec<AstExpr> {
+
+        println!("parse_func_call_args");
+
+        self.lexer.expect_token_next(TokenKind::OpenParen);
+        // AF TODO only one param, FIX mixup of statements and EXPR
+        let firstarg_expr = self.parse_expr().expr;
+        self.lexer.expect_token_next(TokenKind::CloseParen);
+
+        let args = vec!(firstarg_expr);
+
+        args
+    }
+
+    fn parse_func_call(&mut self) -> AstFunCall {
+
+        println!("parse_func_call");
+
+        let token = self.lexer.expect_token_next(TokenKind::Name);
+        let name = self.lexer.get_string(token.text_start, token.text_len);
+
+        let args = self.parse_func_call_args();
+
+        if name =="write" {
+            // AF TODO FILL IN ACUAL EXPRESSION
+            return AstFunCall { name, args, loc : token.loc };
         }
-        AstStatement::default()
+        let loc_msg = fmt_loc_err( self.filename_locations, &token.loc);
+        user_error!("{} unknoen function namme '{}'", loc_msg, &name);
+    }
+
+    fn parse_expr(&mut self) -> AstStatement {
+        let mut result = AstStatement::default();
+
+        if let Some( token ) = self.lexer.peek() {
+
+            let name = self.lexer.get_string(token.text_start, token.text_len);
+            println!("GOT PEEKED TOKEN FOR EXPR {} Name: {}", token_kind_name(token.token_type), name);
+
+            match token.token_type {
+
+                TokenKind::Name => {
+                    let func_call =self.parse_func_call();
+                    result.expr = AstExpr { kind : AstExprKind::FuncCall( func_call ) };
+                },
+                TokenKind::Literal => {
+                    let literal = self.parse_string_literal();
+                     result.expr = AstExpr { kind : AstExprKind::LitString(literal) };
+                },
+                // TokenKind::OpenParen => todo!(),
+                // TokenKind::CloseParen => todo!(),
+                // TokenKind::OpenCurly => todo!(),
+                // TokenKind::CloseCurly => todo!(),
+                // TokenKind::Semicolon => todo!(),
+                _ => {
+                    // AF TODO REMOVE LATER
+                }
+            }
+        } else {
+            let loc_msg = fmt_loc_err( 
+                self.filename_locations, 
+                &self.lexer.get_location());
+            user_error!("{} expected expression, reached end of file", loc_msg);
+        }
+        result        
     }
 
     fn parse_curly_block(&mut self) -> AstBlock {
@@ -83,6 +154,7 @@ impl<'a> Parser<'a> {
             // add expression to block
             let expr = self.parse_expr();
             block.statements.push( expr );
+            self.lexer.expect_token_next(TokenKind::Semicolon);
 
         }
         self.lexer.expect_token_next(TokenKind::CloseCurly);
@@ -145,6 +217,4 @@ impl<'a> Parser<'a> {
         // }        
 
     }
-
-
 }

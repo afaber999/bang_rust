@@ -88,7 +88,7 @@ fn main() -> Result<()> {
     let mut parser = Parser::new(lexer, &filename_locations);
     let proc_def = parser.parse();
 
-    let mut basm_compiler = BasmCompiler::new();
+    let mut basm_compiler = BasmCompiler::new(&filename_locations);
 
     basm_compiler.compile( &proc_def);
     basm_compiler.write_to_bm(&output_file_path);
