@@ -127,9 +127,6 @@ impl<'a> BasmCompiler<'a> {
         println!("compile_expr {:?}", expr);
 
         match &expr.kind {
-            AstExprKind::Empty => {
-                //todo!(),
-            },
             AstExprKind::FuncCall(func_call) => {
                 // TODO only built in functions are supported at this point in time
                 println!("AstExprKind::FuncCall: {:?}", func_call);
@@ -176,7 +173,11 @@ impl<'a> BasmCompiler<'a> {
 
         for stmt in stmts {
             println!("compile_block stmt: {:?}", &stmt);
-            self.compile_expr(&stmt.expr);
+            match &stmt.kind {
+                crate::parser::AstStatementKind::Expr(expr) => {
+                    self.compile_expr(&expr)
+                }
+            }
         }
     }
 
