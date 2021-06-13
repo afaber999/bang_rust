@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::{Path};
 use crate::location::{FileNameLocations, fmt_loc_err};
-use crate::parser::{AstBlock, AstExpr, AstFunCall, AstProcDef, AstStatement};
+use crate::parser::{AstBlock, AstExpr, AstFunCall, AstIfStatement, AstProcDef, AstStatement};
 use crate::basm_instructions::{BasmInstruction, basm_instruction_opcode};
 
 use std::fs::File;
@@ -38,7 +38,7 @@ impl<'a> BasmCompiler<'a> {
         assert!( (self.program.len() %2) == 0);
         self.program.push( basm_instruction_opcode(instruction) );
         self.program.push( operand );
-        self.program.len()
+        self.program.len() - 2
     }
 
     fn push_external_native(&mut self, native_name: String) -> BMword
@@ -131,24 +131,31 @@ impl<'a> BasmCompiler<'a> {
                 // TODO only built in functions are supported at this point in time
                 println!("AstExprKind::FuncCall: {:?}", func_call);
 
-                let mut func_idx : i64 = -1;
-                if let Some(idx)= self.externals.get(&func_call.name) {
-                    func_idx = *idx as i64;
+                if func_call.name == "true" {
+                    self.basm_push_inst(&BasmInstruction::PUSH, 1);
                 }
-
-                if func_idx >= 0 {
-
-                    // check arity
-                    self.check_function_arity(&func_call, 1); 
-
-                    // compile the argument
-                    self.compile_expr(&func_call.args[0]);
-
-                    println!("FUNC IDX : {:?}", func_idx);
-                    // do function call
-                    self.basm_push_inst(&BasmInstruction::NATIVE, func_idx);                    
+                else if func_call.name == "false" {
+                    self.basm_push_inst(&BasmInstruction::PUSH, 0);
                 } else {
-                    user_error!("Only native functions are supported");
+                    let mut func_idx : i64 = -1;
+                    if let Some(idx)= self.externals.get(&func_call.name) {
+                        func_idx = *idx as i64;
+                    }
+    
+                    if func_idx >= 0 {
+    
+                        // check arity
+                        self.check_function_arity(&func_call, 1); 
+    
+                        // compile the argument
+                        self.compile_expr(&func_call.args[0]);
+    
+                        println!("FUNC IDX : {:?}", func_idx);
+                        // do function call
+                        self.basm_push_inst(&BasmInstruction::NATIVE, func_idx);                    
+                    } else {
+                        user_error!("Only native functions are supported");
+                    }    
                 }
             },
             AstExpr::LitString(literal) => {
@@ -166,20 +173,40 @@ impl<'a> BasmCompiler<'a> {
         }
     }
 
+    fn compile_if_statment(&mut self, if_statement: &AstIfStatement) {
+
+        println!("Compile if instruction condition ");
+        self.compile_expr(&if_statement.condition);
+        self.basm_push_inst(&BasmInstruction::NOT, 0);
+        let jmp_if_addr = self.basm_push_inst(&BasmInstruction::JMPIf, 0);
+        println!("######### jmp_if_addr {} ",jmp_if_addr);
+
+
+        self.compile_block(&if_statement.then_block);
+        let body_end_addr = self.program.len() / 2;
+        println!("######### body_end_addr {} ",body_end_addr);
+
+        self.program[jmp_if_addr + 1 ] = body_end_addr as BMword;
+    }
+
+    pub fn compile_statement(&mut self, stmt: &AstStatement) {
+        println!("compile_statement: {:?}", &stmt);
+        match &stmt {
+            AstStatement::Expr(expr) => {
+                self.compile_expr(&expr)
+            },
+            AstStatement::If(if_statement) => {
+                self.compile_if_statment( &if_statement);
+            }
+        }
+    }
+
     pub fn compile_block(&mut self, block: &AstBlock ) {
         println!("compile_block ");
         let stmts = &block.statements;
 
         for stmt in stmts {
-            println!("compile_block stmt: {:?}", &stmt);
-            match &stmt {
-                AstStatement::Expr(expr) => {
-                    self.compile_expr(&expr)
-                },
-                AstStatement::If(_if_statement) => {
-                    todo!()
-                }
-            }
+            self.compile_statement(&stmt)
         }
     }
 

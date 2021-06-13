@@ -1,4 +1,7 @@
 proc main() 
 {
+    if ( false("") ) {
+        write("If true!\n");
+    }
     write("Done!\n");
 }

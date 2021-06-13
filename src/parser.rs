@@ -3,9 +3,10 @@ use crate::{lexer::Lexer, location::{FileNameLocations, Location, fmt_loc_err}, 
 
 #[derive(Debug)]
 pub struct AstIfStatement {
-    condition  : AstExpr,
-    then_block : Box<AstStatement>,
-    else_block : Box<AstStatement>, 
+    pub loc  : Location,    
+    pub condition  : AstExpr,
+    pub then_block : Box<AstBlock>,
+    //pub else_block : Box<AstBlock>, 
 }
 
 #[derive(Debug)]
@@ -127,8 +128,13 @@ impl<'a> Parser<'a> {
             // AF TODO FILL IN ATCUAL EXPRESSION
             return AstFunCall { name, args, loc : token.loc };
         }
+        if name == "true" || name == "false" {
+            // AF TODO REMOVE TEMPrue
+            return AstFunCall { name, args, loc : token.loc };
+        }
+
         let loc_msg = fmt_loc_err( self.filename_locations, &token.loc);
-        user_error!("{} unknown function namme '{}'", loc_msg, &name);
+        user_error!("{} unknown function name '{}'", loc_msg, &name);
     }
 
 
@@ -170,6 +176,29 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn parse_if(&mut self) ->AstStatement {
+
+        let token = self.lexer.expect_keyword("if");
+
+        // open and close paren
+        println!("IF expect open paren");
+        self.lexer.expect_token_next(TokenKind::OpenParen);
+        println!("IF parse expr");
+        let expr = self.parse_expr();
+        println!("IF expect closeB paren");
+        self.lexer.expect_token_next(TokenKind::CloseParen);
+        println!("IF block");
+        let then_block = self.parse_curly_block(); 
+        println!("END IF block");
+
+        AstStatement::If( AstIfStatement {
+            loc : token.loc,
+            condition: expr,
+            then_block: Box::new(then_block),
+            //else_block: (),    
+        })
+    }
+
     fn parse_statement(&mut self) -> AstStatement {
 
         println!("---------- PARSE STATMENT ");
@@ -179,8 +208,13 @@ impl<'a> Parser<'a> {
             let stmt = match token.token_type {
 
                 TokenKind::Name => {
-                    println!("---------- PARSE STATMENT TOKENKIND NAME ");
+                    let name = self.lexer.get_string(token.text_start, token.text_len);
+                    if name == "if" {
+                        return self.parse_if();
+                    } 
+                    println!("---------- PARSE STATMENT AS EXPRESSION ");
                     AstStatement::Expr( self.parse_expr() )
+
                 },
                 TokenKind::Literal |
                 TokenKind::OpenParen |
