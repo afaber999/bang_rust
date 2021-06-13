@@ -176,6 +176,7 @@ impl<'a> Lexer<'a> {
 
     pub fn peek(&mut self) -> Option<Token>{
         self.peek_token = self.next();
+        //println!( "PEEK TOKEN KIND: {:?}", self.peek_token);
         self.peek_token        
     }
 
@@ -185,6 +186,7 @@ impl<'a> Lexer<'a> {
         if self.peek_token.is_some() {
             let token = self.peek_token;
             self.peek_token = None;
+            //println!( "NEXT TOKEN KIND: {:?}", &token);
             return token;
         }
 
@@ -209,7 +211,9 @@ impl<'a> Lexer<'a> {
 
         for (token_text, token_type) in hardcoded_tokens.iter() {
             if self.starts_with( &token_text ) {
-                return Some( self.extract_token(*token_type, token_text.len()) );
+                let opt_token =  Some( self.extract_token(*token_type, token_text.len()) );
+                //println!( "NEXT TOKEN KIND: {:?}", &opt_token);
+                return opt_token
             }
         }
 
@@ -222,8 +226,10 @@ impl<'a> Lexer<'a> {
             token_len += 1;
         }
         if token_len > 0  {
-            return Some( self.extract_token(TokenKind::Name, token_len ));
-        }
+            let opt_token =  Some( self.extract_token(TokenKind::Name, token_len ));
+            //println!( "NEXT TOKEN KIND: {:?}", &opt_token);
+            return opt_token
+    }
 
         // string literal
         if self.content[ self.cur_idx] == '\"' {
@@ -236,6 +242,7 @@ impl<'a> Lexer<'a> {
             if pos < self.line_end {
                 let token_len = pos - self.cur_idx+ 1;
                 let token = self.extract_token(TokenKind::Literal, token_len);
+                //println!( "NEXT TOKEN KIND: {:?}", &token);
                 return Some( token );
             } else {
                 panic!("Missing closing character on string literal");

@@ -106,24 +106,12 @@ impl<'a> Parser<'a> {
         println!("parse_func_call_args");
 
         self.lexer.expect_token_next(TokenKind::OpenParen);
-        // AF TODO only one param, FIX mixup of statements and EXPR
+
         let firstarg_expr = self.parse_expr();
 
         self.lexer.expect_token_next(TokenKind::CloseParen);
 
         vec![firstarg_expr]
-        // match firstarg_expr {
-        //     // AF TODO
-        //     AstExpr::LitString(func_expr) => {
-        //         let args = vec!(func_expr);
-        //         return args
-
-        //     },
-        //     _ => {
-        //         todo!()
-        //     },
-        // }
-        // user_error!("Expected function argument EXPR");
     }
 
     fn parse_func_call(&mut self) -> AstFunCall {
@@ -146,6 +134,7 @@ impl<'a> Parser<'a> {
 
     fn parse_expr(&mut self) -> AstExpr {
 
+        println!("---------- PARSE EXPR ");
 
         if let Some( token ) = self.lexer.peek() {
 
@@ -183,14 +172,41 @@ impl<'a> Parser<'a> {
 
     fn parse_statement(&mut self) -> AstStatement {
 
-        let expr = self.parse_expr();
-        self.lexer.expect_token_next(TokenKind::Semicolon);
-        
-        AstStatement::Expr( expr)
+        println!("---------- PARSE STATMENT ");
+
+        if let Some( token ) = self.lexer.peek() {
+
+            let stmt = match token.token_type {
+
+                TokenKind::Name => {
+                    println!("---------- PARSE STATMENT TOKENKIND NAME ");
+                    AstStatement::Expr( self.parse_expr() )
+                },
+                TokenKind::Literal |
+                TokenKind::OpenParen |
+                TokenKind::CloseParen |
+                TokenKind::OpenCurly |
+                TokenKind::CloseCurly |
+                TokenKind::Semicolon  => {
+                    user_error!("Unknown statement ")
+                }
+            };
+            
+            self.lexer.expect_token_next(TokenKind::Semicolon);
+
+            stmt
+
+        } else {
+            let loc_msg = fmt_loc_err( 
+                self.filename_locations, 
+                &self.lexer.get_location());
+            user_error!("{} expected statement, reached end of file", loc_msg);
+        }
     }
 
     fn parse_curly_block(&mut self) -> AstBlock {
 
+        println!("---------- CURLY BLOCK ");
         let mut stmts = Vec::new();
 
         // expect open curly
@@ -204,8 +220,6 @@ impl<'a> Parser<'a> {
             // add expression to block
             let stmt = self.parse_statement();
             stmts.push( stmt );
-            self.lexer.expect_token_next(TokenKind::Semicolon);
-
         }
         self.lexer.expect_token_next(TokenKind::CloseCurly);
 
@@ -225,7 +239,10 @@ impl<'a> Parser<'a> {
 
         // open and close paren
         self.lexer.expect_token_next(TokenKind::OpenParen);
+
+        println!("!!!!!!!!!! EXPECT CLOSE PAREN FOR PROC");
         self.lexer.expect_token_next(TokenKind::CloseParen);
+        println!("!!!!!!!!!! DONE EXPECT CLOSE PAREN FOR PROC");
 
         let body = self.parse_curly_block();
 
@@ -257,15 +274,5 @@ impl<'a> Parser<'a> {
     pub fn parse(&mut self) ->AstProcDef{
         let proc_def = self.parse_proc_def();
         proc_def
-
-        // while let Some(nt) = self.lexer.next() {
-
-        //     let tok_str = self.lexer.get_string( nt.text_start, nt.text_len );
-        //     let tok_type_name = token_type_name(nt.token_type);
-    
-        //     let err_str = fmt_loc_err(self.filename_locations, &nt.loc);
-        //     println!("TOKEN {} {}  :{}:", &tok_type_name, &err_str, &tok_str );
-        // }        
-
     }
 }
