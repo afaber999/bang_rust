@@ -29,6 +29,7 @@ pub enum AstExpr {
     LitInt(i64),
     LitChar(char),
     LitString(String),
+    LitBool(bool),
 }
 
 #[derive(Debug)]
@@ -128,10 +129,6 @@ impl<'a> Parser<'a> {
             // AF TODO FILL IN ATCUAL EXPRESSION
             return AstFunCall { name, args, loc : token.loc };
         }
-        if name == "true" || name == "false" {
-            // AF TODO REMOVE TEMPrue
-            return AstFunCall { name, args, loc : token.loc };
-        }
 
         let loc_msg = fmt_loc_err( self.filename_locations, &token.loc);
         user_error!("{} unknown function name '{}'", loc_msg, &name);
@@ -150,8 +147,20 @@ impl<'a> Parser<'a> {
             let expr = match token.token_type {
 
                 TokenKind::Name => {
-                    let func_call =self.parse_func_call();
-                    AstExpr::FuncCall( func_call )
+                    match name.as_str() {
+                        "true" => {
+                            self.lexer.next();
+                            AstExpr::LitBool(true)
+                        },
+                        "false" => {
+                            self.lexer.next();
+                            AstExpr::LitBool(false)
+                        },
+                        _ =>  {
+                            let func_call =self.parse_func_call();
+                            AstExpr::FuncCall( func_call )
+                        },
+                    }
                 },
                 TokenKind::Literal => {
                     let literal = self.parse_string_literal();

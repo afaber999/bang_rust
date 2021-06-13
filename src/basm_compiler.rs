@@ -169,7 +169,14 @@ impl<'a> BasmCompiler<'a> {
             AstExpr::LitFloat(_) => todo!(),
             AstExpr::LitInt(_) => todo!(),
             AstExpr::LitChar(_) => todo!(),
+            AstExpr::LitBool(value  ) => {
+                if *value {
+                    self.basm_push_inst(&BasmInstruction::PUSH, 1);
 
+                } else {
+                    self.basm_push_inst(&BasmInstruction::PUSH, 0);
+                }
+            },
         }
     }
 

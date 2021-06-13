@@ -1,6 +1,6 @@
 proc main() 
 {
-    if ( false("") ) {
+    if ( true ) {
         write("If true!\n");
     }
     write("Done!\n");
