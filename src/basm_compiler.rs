@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::{Path};
 use crate::location::{FileNameLocations, fmt_loc_err};
-use crate::parser::{AstBlock, AstExpr, AstExprKind, AstFunCall, AstProcDef};
+use crate::parser::{AstBlock, AstExpr, AstFunCall, AstProcDef, AstStatement};
 use crate::basm_instructions::{BasmInstruction, basm_instruction_opcode};
 
 use std::fs::File;
@@ -126,8 +126,8 @@ impl<'a> BasmCompiler<'a> {
 
         println!("compile_expr {:?}", expr);
 
-        match &expr.kind {
-            AstExprKind::FuncCall(func_call) => {
+        match &expr {
+            AstExpr::FuncCall(func_call) => {
                 // TODO only built in functions are supported at this point in time
                 println!("AstExprKind::FuncCall: {:?}", func_call);
 
@@ -151,7 +151,7 @@ impl<'a> BasmCompiler<'a> {
                     user_error!("Only native functions are supported");
                 }
             },
-            AstExprKind::LitString(literal) => {
+            AstExpr::LitString(literal) => {
                 // AF TODO remove quotes?
                 println!("AstExprKind::LitString: {}", literal);
                 let (mem_loc, mem_len) = self.push_string_to_memory(literal);
@@ -159,13 +159,12 @@ impl<'a> BasmCompiler<'a> {
                 self.basm_push_inst(&BasmInstruction::PUSH, mem_loc);
                 self.basm_push_inst(&BasmInstruction::PUSH, mem_len);                
             },
-            AstExprKind::LitFloat(_) => todo!(),
-            AstExprKind::LitInt(_) => todo!(),
-            AstExprKind::LitChar(_) => todo!(),
+            AstExpr::LitFloat(_) => todo!(),
+            AstExpr::LitInt(_) => todo!(),
+            AstExpr::LitChar(_) => todo!(),
 
         }
     }
-
 
     pub fn compile_block(&mut self, block: &AstBlock ) {
         println!("compile_block ");
@@ -173,9 +172,12 @@ impl<'a> BasmCompiler<'a> {
 
         for stmt in stmts {
             println!("compile_block stmt: {:?}", &stmt);
-            match &stmt.kind {
-                crate::parser::AstStatementKind::Expr(expr) => {
+            match &stmt {
+                AstStatement::Expr(expr) => {
                     self.compile_expr(&expr)
+                },
+                AstStatement::If(_if_statement) => {
+                    todo!()
                 }
             }
         }

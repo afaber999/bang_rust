@@ -1,18 +1,18 @@
 use crate::{lexer::Lexer, location::{FileNameLocations, Location, fmt_loc_err}, token::{TokenKind, token_kind_name}};
 
+
 #[derive(Debug)]
-pub struct AstExpr {
-    pub kind : AstExprKind,
+pub struct AstIfStatement {
+    condition  : AstExpr,
+    then_block : Box<AstStatement>,
+    else_block : Box<AstStatement>, 
 }
 
 #[derive(Debug)]
-pub enum AstStatementKind {
+pub enum AstStatement {
     Expr( AstExpr),
+    If( AstIfStatement ),
 }
-#[derive(Debug)]
-pub struct AstStatement{
-    pub kind : AstStatementKind,
-} 
 
 #[derive(Debug)]
 pub struct AstFunCall {
@@ -22,7 +22,7 @@ pub struct AstFunCall {
 }
 
 #[derive(Debug)]
-pub enum AstExprKind {
+pub enum AstExpr {
     FuncCall(AstFunCall),
     LitFloat(f64),
     LitInt(i64),
@@ -107,17 +107,22 @@ impl<'a> Parser<'a> {
 
         self.lexer.expect_token_next(TokenKind::OpenParen);
         // AF TODO only one param, FIX mixup of statements and EXPR
-        let firstarg_expr = self.parse_expr().kind;
+        let firstarg_expr = self.parse_expr();
 
         self.lexer.expect_token_next(TokenKind::CloseParen);
 
-        match firstarg_expr {
-            AstStatementKind::Expr(func_expr) => {
-                let args = vec!(func_expr);
-                return args
+        vec![firstarg_expr]
+        // match firstarg_expr {
+        //     // AF TODO
+        //     AstExpr::LitString(func_expr) => {
+        //         let args = vec!(func_expr);
+        //         return args
 
-            },
-        }
+        //     },
+        //     _ => {
+        //         todo!()
+        //     },
+        // }
         // user_error!("Expected function argument EXPR");
     }
 
@@ -138,7 +143,8 @@ impl<'a> Parser<'a> {
         user_error!("{} unknown function namme '{}'", loc_msg, &name);
     }
 
-    fn parse_expr(&mut self) -> AstStatement {
+
+    fn parse_expr(&mut self) -> AstExpr {
 
 
         if let Some( token ) = self.lexer.peek() {
@@ -150,11 +156,11 @@ impl<'a> Parser<'a> {
 
                 TokenKind::Name => {
                     let func_call =self.parse_func_call();
-                    AstExpr { kind : AstExprKind::FuncCall( func_call ) }
+                    AstExpr::FuncCall( func_call )
                 },
                 TokenKind::Literal => {
                     let literal = self.parse_string_literal();
-                     AstExpr { kind : AstExprKind::LitString(literal) }
+                     AstExpr::LitString(literal)
                 },
                 // TokenKind::OpenParen => todo!(),
                 // TokenKind::CloseParen => todo!(),
@@ -162,12 +168,10 @@ impl<'a> Parser<'a> {
                 // TokenKind::CloseCurly => todo!(),
                 // TokenKind::Semicolon => todo!(),
                 _ => {
-                    AstExpr { kind : AstExprKind::LitString("TODO EMPTY".to_string()) }
+                    AstExpr::LitString("TODO EMPTY".to_string())
                 }
             };
-            AstStatement {
-                kind : AstStatementKind::Expr( expr ),
-            }
+            expr
 
         } else {
             let loc_msg = fmt_loc_err( 
@@ -175,6 +179,14 @@ impl<'a> Parser<'a> {
                 &self.lexer.get_location());
             user_error!("{} expected expression, reached end of file", loc_msg);
         }
+    }
+
+    fn parse_statement(&mut self) -> AstStatement {
+
+        let expr = self.parse_expr();
+        self.lexer.expect_token_next(TokenKind::Semicolon);
+        
+        AstStatement::Expr( expr)
     }
 
     fn parse_curly_block(&mut self) -> AstBlock {
@@ -189,10 +201,9 @@ impl<'a> Parser<'a> {
             if token.token_type == TokenKind::CloseCurly {
                 break;
             }
-
             // add expression to block
-            let expr = self.parse_expr();
-            stmts.push( expr );
+            let stmt = self.parse_statement();
+            stmts.push( stmt );
             self.lexer.expect_token_next(TokenKind::Semicolon);
 
         }
