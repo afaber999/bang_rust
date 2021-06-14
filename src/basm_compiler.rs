@@ -261,7 +261,7 @@ impl<'a> BasmCompiler<'a> {
 
     }
 
-    fn compile_var_def(&mut self, var_def :&AstVarDef ) {
+    fn compile_var_def(&mut self, _var_def :&AstVarDef ) {
 
         println!("compile_var_def ");
         todo!()

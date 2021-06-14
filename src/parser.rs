@@ -41,6 +41,7 @@ pub struct AstBlock{
 
 #[derive(Debug)]
 pub struct AstProcDef {
+    pub loc  : Location,
     pub name : String,
     pub body : AstBlock,
 } 
@@ -52,6 +53,7 @@ pub enum AstTypes {
 
 #[derive(Debug)]
 pub struct AstVarDef {
+    pub loc      : Location,    
     pub name     : String,
     pub var_type : AstTypes,
 } 
@@ -84,7 +86,7 @@ impl<'a> Parser<'a> {
 
     fn parse_string_literal(&mut self) -> String {
 
-        println!("parse_string_literal");
+        println!("---------- PARSE STRING LITERAL ");
 
         let token = self.lexer.expect_token_next(TokenKind::Literal);
 
@@ -129,7 +131,7 @@ impl<'a> Parser<'a> {
 
     fn parse_func_call_args(&mut self) -> Vec<AstExpr> {
 
-        println!("parse_func_call_args");
+        println!("---------- PARSE FUNC_CALL ARGS ");
 
         self.lexer.expect_token_next(TokenKind::OpenParen);
 
@@ -142,7 +144,7 @@ impl<'a> Parser<'a> {
 
     fn parse_func_call(&mut self) -> AstFunCall {
 
-        println!("parse_func_call");
+        println!("---------- PARSE FUNC_CALL ");
 
         let token = self.lexer.expect_token_next(TokenKind::Name);
         let name = self.lexer.get_string(token.text_start, token.text_len);
@@ -211,18 +213,15 @@ impl<'a> Parser<'a> {
 
     fn parse_if(&mut self) ->AstStatement {
 
+        println!("---------- PARSE STATMENT ");
+
         let token = self.lexer.expect_keyword("if");
 
         // open and close paren
-        println!("IF expect open paren");
         self.lexer.expect_token_next(TokenKind::OpenParen);
-        println!("IF parse expr");
         let expr = self.parse_expr();
-        println!("IF expect closeB paren");
         self.lexer.expect_token_next(TokenKind::CloseParen);
-        println!("IF block");
         let then_block = Box::new( self.parse_curly_block() ); 
-        println!("END IF block");
 
         let mut else_block = None;
 
@@ -264,6 +263,7 @@ impl<'a> Parser<'a> {
                 TokenKind::CloseParen |
                 TokenKind::OpenCurly |
                 TokenKind::CloseCurly |
+                TokenKind::Colon |
                 TokenKind::Semicolon  => {
                     user_error!("Unknown statement ")
                 }
@@ -306,9 +306,11 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_proc_def(&mut self) -> AstProcDef {
+        println!("---------- PARSE PROC DEF ");
 
         // check proc token
-        self.lexer.expect_keyword("proc");
+        let token = self.lexer.expect_keyword("proc");
+        let loc = token.loc;
 
         // expect name of proc token
         let token = self.lexer.expect_token_next(TokenKind::Name);
@@ -317,25 +319,66 @@ impl<'a> Parser<'a> {
         // open and close paren
         self.lexer.expect_token_next(TokenKind::OpenParen);
 
-        println!("!!!!!!!!!! EXPECT CLOSE PAREN FOR PROC");
         self.lexer.expect_token_next(TokenKind::CloseParen);
-        println!("!!!!!!!!!! DONE EXPECT CLOSE PAREN FOR PROC");
 
         let body = self.parse_curly_block();
 
         let result = AstProcDef{ 
+            loc,
             name,
             body,
         };
         result
     }
 
+    fn parse_type(&mut self) -> AstTypes {
+
+        println!("---------- PARSE TYPE ");
+        // expect type name
+        let token = self.lexer.expect_token_next(TokenKind::Name);
+        let type_name = self.lexer.get_string(token.text_start, token.text_len);
+        println!("VAR TYPE NAME IS: {} ", type_name);
+        
+        match type_name.as_str() {
+
+            "i64" => {
+                AstTypes::I64
+            },
+            type_name => {
+                // the code below currently expects 1 type
+                // force compiler error when adding new variant 
+                sa::const_assert!(AstTypes::VARIANT_COUNT ==  1);
+            
+                let loc_msg = fmt_loc_err( 
+                    self.filename_locations, 
+                    &self.lexer.get_location());
+
+                user_error!("{} unknown file type {}", loc_msg, &type_name);
+            }
+        }
+    }
+
+
     fn parse_var_def(&mut self) -> AstVarDef {
         println!("---------- PARSE VAR ");
-        // check proc token
-        self.lexer.expect_keyword("var");
-        self.lexer.expect_token_next(TokenKind::Name)
-        AstVarDef { name: "TODO".to_string(), var_type: AstTypes::I64 }
+
+        // check var token
+        let token = self.lexer.expect_keyword("var");
+        let loc = token.loc;
+
+        // expect name of var token
+        let _ = self.lexer.expect_token_next(TokenKind::Name);
+        let name = self.lexer.get_string(token.text_start, token.text_len);
+        
+        // expect colon
+        self.lexer.expect_token_next(TokenKind::Colon);
+
+        let var_type = self.parse_type();
+
+        // expect semicolon
+        let _ = self.lexer.expect_token_next(TokenKind::Semicolon);
+
+        AstVarDef { loc, name, var_type }
     }
 
     fn parse_top(&mut self, token : &Token) -> AstTop {

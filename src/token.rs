@@ -10,6 +10,7 @@ pub enum TokenKind {
     CloseCurly,
     Semicolon,
     Literal,
+    Colon,
 }
 
 
@@ -22,6 +23,7 @@ pub fn token_kind_name(token_kind : TokenKind ) -> &'static str {
         TokenKind::CloseCurly => "CloseCurly",
         TokenKind::Semicolon => "Semicolon",
         TokenKind::Literal => "Literal",
+        TokenKind::Colon => ":",
     }
 }
 

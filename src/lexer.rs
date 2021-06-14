@@ -95,15 +95,20 @@ impl<'a> Lexer<'a> {
                 return false;
             }
         }
+        println!("STARTSWITH: {}", &value);
+
         true    
     }
 
     pub fn dump(&self) {
+        println!("-------------------- DUMP LEXER --------------------");
+        println!("LINE      :{}", self.get_string(self.line_start, self.line_len()));
         println!("line_start:{:?}", self.line_start);
         println!("line_end  :{:?}", self.line_end);
         println!("last_idx  :{:?}", self.last_idx);
         println!("first_char:{:?}", self.content[self.line_start]);
         println!("last_char :{:?}", self.content[self.line_end]);
+
     }
 
     pub fn next_line(&mut self) {
@@ -144,7 +149,7 @@ impl<'a> Lexer<'a> {
         ch.is_alphanumeric() || ch == '.'
     }
 
-    pub fn get_string(&mut self,  text_start:usize, text_len:usize) -> String {
+    pub fn get_string(&self,  text_start:usize, text_len:usize) -> String {
         self.content[text_start..text_start+text_len].into_iter().collect()
     }
     pub fn get_char(&mut self,  index:usize) -> char {
@@ -190,17 +195,26 @@ impl<'a> Lexer<'a> {
             return token;
         }
 
-        while self.is_line_empty() {
-            self.next_line();
-            if self.eos() {
-                return None;
-            } 
-            //self.dump();
+        println!("CHECK LINE: ");
+
+        loop {
+            // eat all white spaces at begin and end of current line
+            self.trim();
+
+            // skip comments and empty lines
+            if self.is_line_empty() || self.starts_with("#") {
+                // fetch next line
+                self.next_line();
+
+                // make sure we did not reach end of stream
+                if self.eos() {
+                    return None;
+                } 
+                continue;
+            }
+            // use line for next token
+            break;
         }
-
-        // eat all white spaces
-        self.trim();
-
 
         let mut hardcoded_tokens  = std::collections::HashMap::new();
         hardcoded_tokens.insert("(", TokenKind::OpenParen );
@@ -208,6 +222,7 @@ impl<'a> Lexer<'a> {
         hardcoded_tokens.insert("{", TokenKind::OpenCurly );
         hardcoded_tokens.insert("}", TokenKind::CloseCurly );
         hardcoded_tokens.insert(";", TokenKind::Semicolon );
+        hardcoded_tokens.insert(":", TokenKind::Colon );
 
         for (token_text, token_kind) in hardcoded_tokens.iter() {
             if self.starts_with( &token_text ) {
