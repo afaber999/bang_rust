@@ -1,5 +1,7 @@
-use crate::{lexer::Lexer, location::{FileNameLocations, Location, fmt_loc_err}, token::{TokenKind, token_kind_name}};
+use crate::{lexer::Lexer, location::{FileNameLocations, Location, fmt_loc_err}, token::{Token, TokenKind, token_kind_name}};
+extern crate static_assertions as sa;
 
+use variant_count::VariantCount;
 
 #[derive(Debug)]
 pub struct AstIfStatement {
@@ -9,7 +11,7 @@ pub struct AstIfStatement {
     pub else_block : Option<Box<AstBlock>>, 
 }
 
-#[derive(Debug)]
+#[derive(Debug, VariantCount)]
 pub enum AstStatement {
     Expr( AstExpr),
     If( AstIfStatement ),
@@ -22,7 +24,7 @@ pub struct AstFunCall {
     pub args : Vec<AstExpr>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, VariantCount)]
 pub enum AstExpr {
     FuncCall(AstFunCall),
     LitFloat(f64),
@@ -43,7 +45,7 @@ pub struct AstProcDef {
     pub body : AstBlock,
 } 
 
-#[derive(Debug)]
+#[derive(Debug, VariantCount)]
 pub enum AstTypes {
     I64,
 }
@@ -54,7 +56,7 @@ pub struct AstVarDef {
     pub var_type : AstTypes,
 } 
 
-#[derive(Debug)]
+#[derive(Debug, VariantCount)]
 pub enum AstTop {
     ProcDef(AstProcDef),
     VarDef(AstVarDef),
@@ -164,9 +166,9 @@ impl<'a> Parser<'a> {
         if let Some( token ) = self.lexer.peek() {
 
             let name = self.lexer.get_string(token.text_start, token.text_len);
-            println!("GOT PEEKED TOKEN FOR EXPR {} Name: {}", token_kind_name(token.token_type), name);
+            println!("GOT PEEKED TOKEN FOR EXPR {} Name: {}", token_kind_name(token.token_kind), name);
 
-            let expr = match token.token_type {
+            let expr = match token.token_kind {
 
                 TokenKind::Name => {
                     match name.as_str() {
@@ -247,7 +249,7 @@ impl<'a> Parser<'a> {
 
         if let Some( token ) = self.lexer.peek() {
 
-            let stmt = match token.token_type {
+            let stmt = match token.token_kind {
 
                 TokenKind::Name => {
                     if self.lexer.is_keyword(&token, "if") {
@@ -289,7 +291,7 @@ impl<'a> Parser<'a> {
 
 
         while let Some(token) = self.lexer.peek() {
-            if token.token_type == TokenKind::CloseCurly {
+            if token.token_kind == TokenKind::CloseCurly {
                 break;
             }
             // add expression to block
@@ -332,67 +334,45 @@ impl<'a> Parser<'a> {
         println!("---------- PARSE VAR ");
         // check proc token
         self.lexer.expect_keyword("var");
+        self.lexer.expect_token_next(TokenKind::Name)
         AstVarDef { name: "TODO".to_string(), var_type: AstTypes::I64 }
-    }    
+    }
 
-    fn parse_top(&mut self) -> AstTop {
+    fn parse_top(&mut self, token : &Token) -> AstTop {
         println!("---------- PARSE TOP ");
 
-        if let Some( token ) = self.lexer.peek() {
-
-            if self.lexer.is_keyword(&token, "proc") {
-                return AstTop::ProcDef( self.parse_proc_def() );
-            }
-            if self.lexer.is_keyword(&token, "var") {
-                return AstTop::VarDef( self.parse_var_def() );
-            }          
-
-            let loc_msg = fmt_loc_err( 
-                self.filename_locations, 
-                &token.loc);
-
-            user_error!("{} expected var or proc, got {} ", 
-                loc_msg, 
-                token_kind_name(token.token_type));
+        if self.lexer.is_keyword(&token, "proc") {
+            return AstTop::ProcDef( self.parse_proc_def() );
         }
+
+        if self.lexer.is_keyword(&token, "var") {
+            return AstTop::VarDef( self.parse_var_def() );
+        }          
 
         let loc_msg = fmt_loc_err( 
             self.filename_locations, 
-            &self.lexer.get_location());
-        user_error!("{} expected var or proc definition, reached end of file", loc_msg);
+            &token.loc);
+
+        // the code below currently expects 2 top level variant
+        // force compiler error when adding new variant 
+        sa::const_assert!(AstTop::VARIANT_COUNT ==  2);
+                user_error!("{} expected var or proc, got {} ", 
+            loc_msg, 
+            token_kind_name(token.token_kind));
     }
 
     fn parse_module(&mut self) -> AstModule {
         let mut tops = Vec::new();
 
         // while we got tokens left, parse top defs
-        while self.lexer.peek().is_some() {
-            tops.push( self.parse_top() );
+        while let Some(token) = self.lexer.peek() {
+            tops.push( self.parse_top(&token) );
         }
+
         AstModule {
             tops,
         }
     }
- 
-
-    // pub fn parse_dump(&mut self) {
-    //     while let Some(nt) = self.lexer.next() {
-
-    //         // {
-    //         //     let tok_str = tokenizer.get_string( nt.text_start, nt.text_len );
-    //         //     println!("next line row:{} indx: {} :{}:", &nt.loc.row, &nt.loc.col, tok_str );
-    //         // }
-    //         let tok_str = self.lexer.get_string( nt.text_start, nt.text_len );
-    //         let tok_type_name = token_kind_name(nt.token_type);
-    
-    //         let err_str = fmt_loc_err(self.filename_locations, &nt.loc);
-    //         println!("TOKEN {} {}  :{}:", &tok_type_name, &err_str, &tok_str );
-    //        // tokenizer.dump();
-    //         //tokenizer.next_line();
-    //     }        
-
-    // }
-
 
     pub fn parse(&mut self) ->AstModule {
         self.parse_module()

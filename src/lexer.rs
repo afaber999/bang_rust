@@ -160,12 +160,12 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn extract_token(&mut self, token_type:TokenKind, token_size:usize) ->Token {
+    fn extract_token(&mut self, token_kind:TokenKind, token_size:usize) ->Token {
 
         assert!(self.line_len() >= token_size);
 
         let result = Token::new( 
-            token_type,
+            token_kind,
             self.cur_idx, 
             token_size, 
             self.get_location() );
@@ -209,9 +209,9 @@ impl<'a> Lexer<'a> {
         hardcoded_tokens.insert("}", TokenKind::CloseCurly );
         hardcoded_tokens.insert(";", TokenKind::Semicolon );
 
-        for (token_text, token_type) in hardcoded_tokens.iter() {
+        for (token_text, token_kind) in hardcoded_tokens.iter() {
             if self.starts_with( &token_text ) {
-                let opt_token =  Some( self.extract_token(*token_type, token_text.len()) );
+                let opt_token =  Some( self.extract_token(*token_kind, token_text.len()) );
                 //println!( "NEXT TOKEN KIND: {:?}", &opt_token);
                 return opt_token
             }
@@ -261,7 +261,7 @@ impl<'a> Lexer<'a> {
     }
 
     pub fn is_keyword(&mut self, token: &Token, keyword : &str) -> bool {
-        if token.token_type != TokenKind::Name {
+        if token.token_kind != TokenKind::Name {
             return false
         }
         let token_name = self.get_string( token.text_start, token.text_len );
@@ -281,22 +281,22 @@ impl<'a> Lexer<'a> {
         token
     }
 
-    pub fn expect_token_next(&mut self, token_type : TokenKind) -> Token {
+    pub fn expect_token_next(&mut self, token_kind : TokenKind) -> Token {
 
         if let Some( token ) = self.next() {
-            if token.token_type != token_type {
+            if token.token_kind != token_kind {
                 let loc_msg = fmt_loc_err( self.filename_locations, &token.loc);
                 user_error!("{} Expected token {} but got {}",
                     loc_msg,
-                    token_kind_name(token_type),
-                    token_kind_name(token.token_type));
+                    token_kind_name(token_kind),
+                    token_kind_name(token.token_kind));
 
             }
             return token;
         } 
 
         let loc_msg = fmt_loc_err( self.filename_locations, &self.get_location());
-        user_error!("{} reached end of input, expected token type: {}", loc_msg, token_kind_name(token_type));
+        user_error!("{} reached end of input, expected token type: {}", loc_msg, token_kind_name(token_kind));
     }
 }
 

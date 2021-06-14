@@ -13,8 +13,8 @@ pub enum TokenKind {
 }
 
 
-pub fn token_kind_name(token_type : TokenKind ) -> &'static str {
-    match token_type {
+pub fn token_kind_name(token_kind : TokenKind ) -> &'static str {
+    match token_kind {
         TokenKind::Name => "Name",
         TokenKind::OpenParen => "OpenParen",
         TokenKind::CloseParen => "CloseParen",
@@ -27,16 +27,16 @@ pub fn token_kind_name(token_type : TokenKind ) -> &'static str {
 
 #[derive(Debug, Clone, Copy)]
 pub struct Token {
-    pub token_type : TokenKind,
+    pub token_kind : TokenKind,
     pub text_start : usize,
     pub text_len   : usize,
     pub loc : Location,
 }
 
 impl Token {
-    pub fn new( token_type: TokenKind, text_start: usize, text_len: usize , loc: Location)->Self {
+    pub fn new( token_kind: TokenKind, text_start: usize, text_len: usize , loc: Location)->Self {
         Self {
-            token_type,
+            token_kind,
             text_start,
             text_len,
             loc,
