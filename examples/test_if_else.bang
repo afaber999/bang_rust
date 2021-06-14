@@ -1,0 +1,10 @@
+
+proc main() 
+{
+    if ( true ) {
+        write("True!\n");
+    } else {
+        write("False!\n");
+    }
+    write("End!\n");
+}

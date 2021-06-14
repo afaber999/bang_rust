@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::{Path};
 use crate::location::{FileNameLocations, fmt_loc_err};
-use crate::parser::{AstBlock, AstExpr, AstFunCall, AstIfStatement, AstProcDef, AstStatement, AstTop, AstVarDef};
+use crate::parser::{AstBlock, AstExpr, AstFunCall, AstIfStatement, AstModule, AstProcDef, AstStatement, AstTop, AstVarDef};
 use crate::basm_instructions::{BasmInstruction, basm_instruction_opcode};
 
 use std::fs::File;
@@ -267,7 +267,7 @@ impl<'a> BasmCompiler<'a> {
         todo!()
     }
 
-    pub fn compile(&mut self, ast_top :&AstTop ) {
+    pub fn compile(&mut self, module :&AstModule ) {
         // insert native write function
         self.push_external_native( "write".to_string() );
 
@@ -277,10 +277,11 @@ impl<'a> BasmCompiler<'a> {
         // self.x_addr = x_addr;
         // println!("$$$$$$$$$$$$$$ MEMOERY ADDRESS FOR X IS {}", self.x_addr);
 
-
-        match ast_top {
-            AstTop::ProcDef( proc_def) => self.compile_proc_def(&proc_def),
-            AstTop::VarDef( var_def ) => self.compile_var_def(var_def),
+        for top in &module.tops {
+            match top {
+                AstTop::ProcDef( proc_def) => self.compile_proc_def(&proc_def),
+                AstTop::VarDef( var_def ) => self.compile_var_def(&var_def),
+            }
         }
 
         // let (mem_loc, mem_len) = self.push_string_to_memory("Hello, World!");

@@ -60,6 +60,10 @@ pub enum AstTop {
     VarDef(AstVarDef),
 }
 
+#[derive(Debug)]
+pub struct AstModule {
+    pub tops: Vec<AstTop>,
+}
 
 #[derive(Debug)]
 pub struct Parser<'a> {
@@ -358,26 +362,39 @@ impl<'a> Parser<'a> {
         user_error!("{} expected var or proc definition, reached end of file", loc_msg);
     }
 
+    fn parse_module(&mut self) -> AstModule {
+        let mut tops = Vec::new();
 
-    pub fn parse_dump(&mut self) {
-        while let Some(nt) = self.lexer.next() {
-
-            // {
-            //     let tok_str = tokenizer.get_string( nt.text_start, nt.text_len );
-            //     println!("next line row:{} indx: {} :{}:", &nt.loc.row, &nt.loc.col, tok_str );
-            // }
-            let tok_str = self.lexer.get_string( nt.text_start, nt.text_len );
-            let tok_type_name = token_kind_name(nt.token_type);
-    
-            let err_str = fmt_loc_err(self.filename_locations, &nt.loc);
-            println!("TOKEN {} {}  :{}:", &tok_type_name, &err_str, &tok_str );
-           // tokenizer.dump();
-            //tokenizer.next_line();
-        }        
-
+        // while we got tokens left, parse top defs
+        while self.lexer.peek().is_some() {
+            tops.push( self.parse_top() );
+        }
+        AstModule {
+            tops,
+        }
     }
+ 
 
-    pub fn parse(&mut self) ->AstTop{
-        self.parse_top()
+    // pub fn parse_dump(&mut self) {
+    //     while let Some(nt) = self.lexer.next() {
+
+    //         // {
+    //         //     let tok_str = tokenizer.get_string( nt.text_start, nt.text_len );
+    //         //     println!("next line row:{} indx: {} :{}:", &nt.loc.row, &nt.loc.col, tok_str );
+    //         // }
+    //         let tok_str = self.lexer.get_string( nt.text_start, nt.text_len );
+    //         let tok_type_name = token_kind_name(nt.token_type);
+    
+    //         let err_str = fmt_loc_err(self.filename_locations, &nt.loc);
+    //         println!("TOKEN {} {}  :{}:", &tok_type_name, &err_str, &tok_str );
+    //        // tokenizer.dump();
+    //         //tokenizer.next_line();
+    //     }        
+
+    // }
+
+
+    pub fn parse(&mut self) ->AstModule {
+        self.parse_module()
     }
 }

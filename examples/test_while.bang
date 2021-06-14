@@ -9,4 +9,3 @@ proc main()
     }
     write("End!\n");
 }
-

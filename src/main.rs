@@ -86,11 +86,11 @@ fn main() -> Result<()> {
     // }
     let lexer = Lexer::new(input_file, input_file_name, &filename_locations);
     let mut parser = Parser::new(lexer, &filename_locations);
-    let ast_top = parser.parse();
+    let module = parser.parse();
 
     let mut basm_compiler = BasmCompiler::new(&filename_locations);
 
-    basm_compiler.compile( &ast_top);
+    basm_compiler.compile( &module);
     basm_compiler.write_to_bm(&output_file_path);
 
     //basm_compiler.save(&output_file_path);
