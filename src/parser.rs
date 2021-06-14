@@ -6,7 +6,7 @@ pub struct AstIfStatement {
     pub loc  : Location,    
     pub condition  : AstExpr,
     pub then_block : Box<AstBlock>,
-    //pub else_block : Box<AstBlock>, 
+    pub else_block : Option<Box<AstBlock>>, 
 }
 
 #[derive(Debug)]
@@ -42,6 +42,24 @@ pub struct AstProcDef {
     pub name : String,
     pub body : AstBlock,
 } 
+
+#[derive(Debug)]
+pub enum AstTypes {
+    I64,
+}
+
+#[derive(Debug)]
+pub struct AstVarDef {
+    pub name     : String,
+    pub var_type : AstTypes,
+} 
+
+#[derive(Debug)]
+pub enum AstTop {
+    ProcDef(AstProcDef),
+    VarDef(AstVarDef),
+}
+
 
 #[derive(Debug)]
 pub struct Parser<'a> {
@@ -197,14 +215,25 @@ impl<'a> Parser<'a> {
         println!("IF expect closeB paren");
         self.lexer.expect_token_next(TokenKind::CloseParen);
         println!("IF block");
-        let then_block = self.parse_curly_block(); 
+        let then_block = Box::new( self.parse_curly_block() ); 
         println!("END IF block");
+
+        let mut else_block = None;
+
+        if let Some( token ) = self.lexer.peek() {
+            if self.lexer.is_keyword(&token, "else") {
+                self.lexer.next();
+                println!("ELSE block");
+                else_block = Some( Box::new( self.parse_curly_block())); 
+                println!("END ELSE block");
+            } 
+        }
 
         AstStatement::If( AstIfStatement {
             loc : token.loc,
             condition: expr,
-            then_block: Box::new(then_block),
-            //else_block: (),    
+            then_block,
+            else_block,    
         })
     }
 
@@ -217,8 +246,7 @@ impl<'a> Parser<'a> {
             let stmt = match token.token_type {
 
                 TokenKind::Name => {
-                    let name = self.lexer.get_string(token.text_start, token.text_len);
-                    if name == "if" {
+                    if self.lexer.is_keyword(&token, "if") {
                         return self.parse_if();
                     } 
                     println!("---------- PARSE STATMENT AS EXPRESSION ");
@@ -296,6 +324,41 @@ impl<'a> Parser<'a> {
         result
     }
 
+    fn parse_var_def(&mut self) -> AstVarDef {
+        println!("---------- PARSE VAR ");
+        // check proc token
+        self.lexer.expect_keyword("var");
+        AstVarDef { name: "TODO".to_string(), var_type: AstTypes::I64 }
+    }    
+
+    fn parse_top(&mut self) -> AstTop {
+        println!("---------- PARSE TOP ");
+
+        if let Some( token ) = self.lexer.peek() {
+
+            if self.lexer.is_keyword(&token, "proc") {
+                return AstTop::ProcDef( self.parse_proc_def() );
+            }
+            if self.lexer.is_keyword(&token, "var") {
+                return AstTop::VarDef( self.parse_var_def() );
+            }          
+
+            let loc_msg = fmt_loc_err( 
+                self.filename_locations, 
+                &token.loc);
+
+            user_error!("{} expected var or proc, got {} ", 
+                loc_msg, 
+                token_kind_name(token.token_type));
+        }
+
+        let loc_msg = fmt_loc_err( 
+            self.filename_locations, 
+            &self.lexer.get_location());
+        user_error!("{} expected var or proc definition, reached end of file", loc_msg);
+    }
+
+
     pub fn parse_dump(&mut self) {
         while let Some(nt) = self.lexer.next() {
 
@@ -314,8 +377,7 @@ impl<'a> Parser<'a> {
 
     }
 
-    pub fn parse(&mut self) ->AstProcDef{
-        let proc_def = self.parse_proc_def();
-        proc_def
+    pub fn parse(&mut self) ->AstTop{
+        self.parse_top()
     }
 }

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::{Path};
 use crate::location::{FileNameLocations, fmt_loc_err};
-use crate::parser::{AstBlock, AstExpr, AstFunCall, AstIfStatement, AstProcDef, AstStatement};
+use crate::parser::{AstBlock, AstExpr, AstFunCall, AstIfStatement, AstProcDef, AstStatement, AstTop, AstVarDef};
 use crate::basm_instructions::{BasmInstruction, basm_instruction_opcode};
 
 use std::fs::File;
@@ -46,6 +46,16 @@ impl<'a> BasmCompiler<'a> {
         let idx = self.externals.len();
         self.externals.insert(native_name, idx as BMword);
         idx as BMword
+    }
+
+    fn push_buffer_to_memory(&mut self, value : &Vec<u8>) -> (BMword, BMword)
+    {
+        let idx = self.memory.len();
+
+        for bt in value {
+            self.memory.push( *bt );
+        }
+        (idx as BMword, (self.memory.len() - idx) as BMword)
     }
 
     fn push_string_to_memory(&mut self, value : &str) -> (BMword, BMword)
@@ -185,15 +195,41 @@ impl<'a> BasmCompiler<'a> {
         println!("Compile if instruction condition ");
         self.compile_expr(&if_statement.condition);
         self.basm_push_inst(&BasmInstruction::NOT, 0);
-        let jmp_if_addr = self.basm_push_inst(&BasmInstruction::JMPIf, 0);
-        println!("######### jmp_if_addr {} ",jmp_if_addr);
+        let jmp_no_if_op = self.basm_push_inst(&BasmInstruction::JMPIf, 0) + 1;
+        println!("######### jmp_not_if_addr {} ",jmp_no_if_op);
 
 
         self.compile_block(&if_statement.then_block);
-        let body_end_addr = self.program.len() / 2;
-        println!("######### body_end_addr {} ",body_end_addr);
 
-        self.program[jmp_if_addr + 1 ] = body_end_addr as BMword;
+
+        if let Some( else_block) = &if_statement.else_block {
+
+            // add instruction to jump over else block
+            let jmp_over_else = self.basm_push_inst(&BasmInstruction::JMP, 0) + 1;
+            
+            // fill in deferred address of no_if block
+            let jmp_addr = (self.program.len() / 2 )  as BMword;
+            self.program[jmp_no_if_op] = jmp_addr;   
+
+            let jmp_addr = self.program.len() / 2;
+            println!("######### body_else_addr {} ",jmp_addr);
+    
+            self.compile_block(&else_block);
+
+            // fill in deferred address of jmp over else block
+            let jmp_addr = (self.program.len() / 2 )  as BMword;
+            self.program[jmp_over_else] = jmp_addr;   
+    
+
+        } else {
+            // fill in deferred address of no_if block
+            let jmp_addr = (self.program.len() / 2 )  as BMword;
+            self.program[jmp_no_if_op] = jmp_addr;   
+        }
+
+
+
+
     }
 
     pub fn compile_statement(&mut self, stmt: &AstStatement) {
@@ -225,11 +261,27 @@ impl<'a> BasmCompiler<'a> {
 
     }
 
-    pub fn compile(&mut self, proc_def :&AstProcDef ) {
+    fn compile_var_def(&mut self, var_def :&AstVarDef ) {
+
+        println!("compile_var_def ");
+        todo!()
+    }
+
+    pub fn compile(&mut self, ast_top :&AstTop ) {
         // insert native write function
         self.push_external_native( "write".to_string() );
-        self.compile_proc_def(proc_def);
 
+        // TEMP X FOR TESTING
+        // let bt_array = vec![0,0,0,0 as u8];
+        // let (x_addr, _) = self.push_buffer_to_memory(&bt_array);
+        // self.x_addr = x_addr;
+        // println!("$$$$$$$$$$$$$$ MEMOERY ADDRESS FOR X IS {}", self.x_addr);
+
+
+        match ast_top {
+            AstTop::ProcDef( proc_def) => self.compile_proc_def(&proc_def),
+            AstTop::VarDef( var_def ) => self.compile_var_def(var_def),
+        }
 
         // let (mem_loc, mem_len) = self.push_string_to_memory("Hello, World!");
         // println!("Memory size: {}", self.memory.len());

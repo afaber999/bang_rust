@@ -260,6 +260,14 @@ impl<'a> Lexer<'a> {
         //     self.get_location() ) )
     }
 
+    pub fn is_keyword(&mut self, token: &Token, keyword : &str) -> bool {
+        if token.token_type != TokenKind::Name {
+            return false
+        }
+        let token_name = self.get_string( token.text_start, token.text_len );
+        return token_name == keyword
+    }
+
     pub fn expect_keyword(&mut self, name: &str) -> Token {
 
         let token = self.expect_token_next(TokenKind::Name);

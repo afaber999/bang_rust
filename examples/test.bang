@@ -1,7 +1,11 @@
+var x:i64;
+
 proc main() 
 {
-    if ( true ) {
-        write("If true!\n");
+    i = 0;
+    while (i<10)
+        write("Hey!\n");
+        i = i + 1;
     }
-    write("Done!\n");
+    write("End!\n");
 }
