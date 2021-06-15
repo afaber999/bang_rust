@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::{Path};
 use crate::location::{FileNameLocations, fmt_loc_err};
-use crate::parser::{AstBlock, AstExpr, AstFunCall, AstIfStatement, AstModule, AstProcDef, AstStatement, AstTop, AstTypes, AstVarAssign, AstVarDef, AstWhileStatement};
+use crate::parser::{AstBlock, AstExpr, AstFunCall, AstIfStatement, AstModule, AstProcDef, AstStatement, AstTop, AstTypes, AstVarAssign, AstVarDef, AstVarRead, AstWhileStatement};
 use crate::basm_instructions::{BasmInstruction, basm_instruction_opcode};
 
 use std::fs::File;
@@ -191,7 +191,26 @@ impl<'a> BasmCompiler<'a> {
                     self.basm_push_inst(&BasmInstruction::PUSH, 0);
                 }
             },
+            AstExpr::VarRead( value  ) => {
+                self.compile_var_read(value);
+            },
+
         }
+    }
+
+    fn compile_var_read(&mut self, var_read:&AstVarRead) {
+        println!("compile_var_read ");
+        if let Some( addr ) = self.global_vars.get( &var_read.name) {
+            let addr = addr.clone();
+            self.basm_push_inst(&BasmInstruction::PUSH, addr);
+            self.basm_push_inst(&BasmInstruction::READ64I, 0);
+            return
+        }
+        let loc_msg = fmt_loc_err( self.filename_locations, &var_read.loc);
+        user_error!("{} Can't read variable name {}",
+            loc_msg,
+            &var_read.name);            
+        
     }
 
     fn compile_if_statment(&mut self, if_statement: &AstIfStatement) {
@@ -310,7 +329,7 @@ impl<'a> BasmCompiler<'a> {
 
         match &var_def.var_type {
             AstTypes::I64 => {
-                let bt_array = vec![0,0,0,0 as u8];
+                let bt_array = vec![0,0,0,0,0,0,0,0 as u8];
                 let (addr, _) = self.push_buffer_to_memory(&bt_array);                
                 println!("$$$$$$$$$$$$$$ GLOBAL VAR {} at ADDR {}", &var_def.name, &addr);
 

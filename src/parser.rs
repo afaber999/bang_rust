@@ -33,6 +33,13 @@ pub struct AstFunCall {
     pub args : Vec<AstExpr>,
 }
 
+#[derive(Debug)]
+pub struct AstVarRead {
+    pub loc  : Location,    
+    pub name : String,
+} 
+
+
 #[derive(Debug, VariantCount)]
 pub enum AstExpr {
     FuncCall(AstFunCall),
@@ -41,6 +48,7 @@ pub enum AstExpr {
     LitChar(char),
     LitString(String),
     LitBool(bool),
+    VarRead(AstVarRead),
 }
 
 #[derive(Debug)]
@@ -72,8 +80,7 @@ pub struct AstVarAssign {
     pub loc  : Location,    
     pub name : String,
     pub expr : AstExpr,
-} 
-
+}
 
 #[derive(Debug, VariantCount)]
 pub enum AstTop {
@@ -177,6 +184,13 @@ impl<'a> Parser<'a> {
         user_error!("{} unknown function name '{}'", loc_msg, &name);
     }
 
+    fn parse_var_read(&mut self) -> AstVarRead {
+        println!("---------- PARSE VAR READ ");
+        let token = self.lexer.expect_token_next(TokenKind::Name);
+        let name = self.lexer.get_string(token.text_start, token.text_len);
+        return AstVarRead { name, loc : token.loc };
+    }
+ 
 
     fn parse_expr(&mut self) -> AstExpr {
 
@@ -186,6 +200,11 @@ impl<'a> Parser<'a> {
 
             let name = self.lexer.get_string(token.text_start, token.text_len);
             println!("GOT PEEKED TOKEN FOR EXPR {} Name: {}", token_kind_name(token.token_kind), name);
+
+
+            // the code below currently expects 1 type
+            // force compiler error when adding new variant 
+            //sa::const_assert!(AstExpr::VARIANT_COUNT ==  1);
 
             let expr = match token.token_kind {
 
@@ -200,8 +219,16 @@ impl<'a> Parser<'a> {
                             AstExpr::LitBool(false)
                         },
                         _ =>  {
-                            let func_call =self.parse_func_call();
-                            AstExpr::FuncCall( func_call )
+                            // check var assignment statement
+                            if let Some(next_token) = self.lexer.peek(1) {
+                                if next_token.token_kind == TokenKind::OpenParen  {
+                                    let func_call =self.parse_func_call();
+                                    return AstExpr::FuncCall( func_call )
+                                }
+                            }
+
+                            let var_read  =self.parse_var_read();
+                            AstExpr::VarRead( var_read )
                         },
                     }
                 },
@@ -310,7 +337,6 @@ impl<'a> Parser<'a> {
                     if let Some(next_token) = self.lexer.peek(1) {
                         if next_token.token_kind == TokenKind::Equals  {
                             return self.parse_var_assign()
-                            
                         }
                     }
 
