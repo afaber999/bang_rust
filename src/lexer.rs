@@ -214,6 +214,8 @@ impl<'a> Lexer<'a> {
         hardcoded_tokens.insert(";", TokenKind::Semicolon );
         hardcoded_tokens.insert(":", TokenKind::Colon );
         hardcoded_tokens.insert("=", TokenKind::Equals );
+        hardcoded_tokens.insert("+", TokenKind::Plus );
+        hardcoded_tokens.insert("<", TokenKind::Less );
 
         for (token_text, token_kind) in hardcoded_tokens.iter() {
             if self.starts_with( &token_text ) {

@@ -13,6 +13,8 @@ pub enum TokenKind {
     Literal,
     Colon,
     Equals,
+    Plus,
+    Less,
 }
 
 
@@ -28,6 +30,8 @@ pub fn token_kind_name(token_kind : TokenKind ) -> &'static str {
         TokenKind::Literal => "Literal",
         TokenKind::Colon => ":",
         TokenKind::Equals => "=",
+        TokenKind::Plus => "+",
+        TokenKind::Less => "<",
     }
 }
 

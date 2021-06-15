@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::{Path};
 use crate::location::{FileNameLocations, fmt_loc_err};
-use crate::parser::{AstBlock, AstExpr, AstFunCall, AstIfStatement, AstModule, AstProcDef, AstStatement, AstTop, AstTypes, AstVarAssign, AstVarDef, AstVarRead, AstWhileStatement};
+use crate::parser::{AstBinaryOp, AstBlock, AstExpr, AstFunCall, AstIfStatement, AstModule, AstProcDef, AstStatement, AstTop, AstTypes, AstVarAssign, AstVarDef, AstVarRead, AstWhileStatement};
 use crate::basm_instructions::{BasmInstruction, basm_instruction_opcode};
 
 use std::fs::File;
@@ -133,6 +133,21 @@ impl<'a> BasmCompiler<'a> {
         drop(file);     
     }
 
+    fn compile_binary_op(&mut self, binary_op: &AstBinaryOp) {
+        
+        self.compile_expr(binary_op.lhs.as_ref());
+        self.compile_expr(binary_op.rhs.as_ref());
+        
+        match binary_op.kind {
+            crate::parser::AstBinaryOpKind::Plus => {
+                self.basm_push_inst(&BasmInstruction::PLUSI, 0);
+            },
+            crate::parser::AstBinaryOpKind::Less => {
+                self.basm_push_inst(&BasmInstruction::LTI, 0);
+
+            },
+        }
+    }
 
     fn compile_expr(&mut self, expr: &AstExpr) {
 
@@ -195,6 +210,9 @@ impl<'a> BasmCompiler<'a> {
                 self.compile_var_read(value);
             },
 
+            AstExpr::BinarayOp(value ) => {
+                self.compile_binary_op(value);
+            },
         }
     }
 

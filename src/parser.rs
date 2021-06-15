@@ -39,6 +39,19 @@ pub struct AstVarRead {
     pub name : String,
 } 
 
+#[derive(Debug, VariantCount)]
+pub enum AstBinaryOpKind {
+    Plus,
+    Less,
+}
+
+#[derive(Debug)]
+pub struct AstBinaryOp {
+    pub loc  : Location,
+    pub kind : AstBinaryOpKind,
+    pub lhs  : Box<AstExpr>,
+    pub rhs  : Box<AstExpr>,
+} 
 
 #[derive(Debug, VariantCount)]
 pub enum AstExpr {
@@ -49,6 +62,7 @@ pub enum AstExpr {
     LitString(String),
     LitBool(bool),
     VarRead(AstVarRead),
+    BinarayOp(AstBinaryOp),
 }
 
 #[derive(Debug)]
@@ -191,21 +205,18 @@ impl<'a> Parser<'a> {
         return AstVarRead { name, loc : token.loc };
     }
  
+    fn parse_primary_expr(&mut self) -> AstExpr {
 
-    fn parse_expr(&mut self) -> AstExpr {
-
-        println!("---------- PARSE EXPR ");
+        println!("---------- PARSE PRIMARY EXPR ");
 
         if let Some( token ) = self.lexer.peek(0) {
 
             let name = self.lexer.get_string(token.text_start, token.text_len);
-            println!("GOT PEEKED TOKEN FOR EXPR {} Name: {}", token_kind_name(token.token_kind), name);
-
+            println!("PRIMARY EXPR PEEKED TOKEN FOR EXPR {} Name: {}", token_kind_name(token.token_kind), name);
 
             // the code below currently expects 1 type
             // force compiler error when adding new variant 
             //sa::const_assert!(AstExpr::VARIANT_COUNT ==  1);
-
             let expr = match token.token_kind {
 
                 TokenKind::Name => {
@@ -252,9 +263,11 @@ impl<'a> Parser<'a> {
                 TokenKind::CloseParen   |
                 TokenKind::OpenCurly    |
                 TokenKind::CloseCurly   |
+                TokenKind::Plus         |
+                TokenKind::Less         |
                 TokenKind::Semicolon => {
                     let loc_msg = fmt_loc_err( self.filename_locations, &token.loc);
-                    user_error!("{} expression for token kind {} not implemented", loc_msg, token_kind_name(token.token_kind));                    
+                    user_error!("{} primary expression for token kind {} doesn't exist", loc_msg, token_kind_name(token.token_kind));                    
                 }
             };
             expr
@@ -263,8 +276,57 @@ impl<'a> Parser<'a> {
             let loc_msg = fmt_loc_err( 
                 self.filename_locations, 
                 &self.lexer.get_location());
-            user_error!("{} expected expression, reached end of file", loc_msg);
+            user_error!("{} expected primary expression, reached end of file", loc_msg);
         }
+    }
+
+    fn parse_expr(&mut self) -> AstExpr {
+
+        println!("---------- PARSE EXPR ");
+        let lhs = self.parse_primary_expr();
+
+        if let Some( token ) = self.lexer.peek(0) {
+
+            let name = self.lexer.get_string(token.text_start, token.text_len);
+            println!("EXPR: PEEKED TOKEN FOR EXPR {} Name: {}", token_kind_name(token.token_kind), name);
+
+            match &token.token_kind {
+                // groep binary operators?
+                TokenKind::Plus => {
+                    self.lexer.next();
+                    let rhs = self.parse_expr();
+                    return AstExpr::BinarayOp( AstBinaryOp {
+                        loc : token.loc,
+                        kind: AstBinaryOpKind::Plus,
+                        lhs : Box::new(lhs),
+                        rhs : Box::new(rhs),
+                    })
+                },
+                TokenKind::Less=> {
+                    self.lexer.next();
+                    let rhs = self.parse_expr();
+                    return AstExpr::BinarayOp( AstBinaryOp {
+                        loc : token.loc,
+                        kind: AstBinaryOpKind::Less,
+                        lhs : Box::new(lhs),
+                        rhs : Box::new(rhs),
+                    })
+                },
+                TokenKind::Name       |
+                TokenKind::Number     |
+                TokenKind::OpenParen  |
+                TokenKind::CloseParen |
+                TokenKind::OpenCurly  |
+                TokenKind::CloseCurly |
+                TokenKind::Semicolon  |
+                TokenKind::Literal    |
+                TokenKind::Colon      |
+                TokenKind::Equals => {
+                    // fallthrough
+                },
+            }
+        }
+        return lhs;
     }
 
     fn parse_if(&mut self) ->AstStatement {
@@ -357,6 +419,8 @@ impl<'a> Parser<'a> {
                 TokenKind::CloseCurly |
                 TokenKind::Colon |
                 TokenKind::Equals |
+                TokenKind::Plus |
+                TokenKind::Less |
                 TokenKind::Semicolon  => {
 
                 let loc_msg = fmt_loc_err( 
