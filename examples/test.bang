@@ -1,12 +1,8 @@
-#var i:i64;
-
+var i:i64;
 
 proc main() 
 {
-    while (false) {
-        write("loop\n");
-    }
-    #i = 0;
+    i = 70;
     #while (i<10)
     #    write("Hey!\n");
     #    i = i + 1;

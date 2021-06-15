@@ -4,6 +4,7 @@ use enum_iterator::IntoEnumIterator;
 #[derive(Debug, Clone, Copy, IntoEnumIterator, PartialEq)]
 pub enum TokenKind {
     Name,
+    Number,
     OpenParen,
     CloseParen,
     OpenCurly,
@@ -18,6 +19,7 @@ pub enum TokenKind {
 pub fn token_kind_name(token_kind : TokenKind ) -> &'static str {
     match token_kind {
         TokenKind::Name => "Name",
+        TokenKind::Number => "Number",
         TokenKind::OpenParen => "OpenParen",
         TokenKind::CloseParen => "CloseParen",
         TokenKind::OpenCurly => "OpenCurly",

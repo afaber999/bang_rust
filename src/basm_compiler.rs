@@ -179,7 +179,9 @@ impl<'a> BasmCompiler<'a> {
                 self.basm_push_inst(&BasmInstruction::PUSH, mem_len);                
             },
             AstExpr::LitFloat(_) => todo!(),
-            AstExpr::LitInt(_) => todo!(),
+            AstExpr::LitInt(value) => {
+                self.basm_push_inst(&BasmInstruction::PUSH, *value);
+            },
             AstExpr::LitChar(_) => todo!(),
             AstExpr::LitBool(value  ) => {
                 if *value {
@@ -253,7 +255,8 @@ impl<'a> BasmCompiler<'a> {
 
         println!("compile_var_assign ");
         if let Some( addr ) = self.global_vars.get( &var_assign.name) {
-            self.basm_push_inst(&BasmInstruction::PUSH, *addr);
+            let addr = addr.clone();
+            self.basm_push_inst(&BasmInstruction::PUSH, addr);
 
             self.compile_expr(&var_assign.expr);
             self.basm_push_inst(&BasmInstruction::WRITE64, 0);

@@ -205,17 +205,29 @@ impl<'a> Parser<'a> {
                         },
                     }
                 },
+                TokenKind::Number => {
+                    let _ = self.lexer.next();
+
+                    if let Ok(ivalue) = name.parse::<i64>() {
+                        return AstExpr::LitInt(ivalue)
+                    };
+                    let loc_msg = fmt_loc_err( self.filename_locations, &token.loc);
+                    user_error!("{} can't convert number {} to i64", loc_msg, &name);                    
+
+                },
                 TokenKind::Literal => {
                     let literal = self.parse_string_literal();
                      AstExpr::LitString(literal)
                 },
-                // TokenKind::OpenParen => todo!(),
-                // TokenKind::CloseParen => todo!(),
-                // TokenKind::OpenCurly => todo!(),
-                // TokenKind::CloseCurly => todo!(),
-                // TokenKind::Semicolon => todo!(),
-                _ => {
-                    AstExpr::LitString("TODO EMPTY".to_string())
+                TokenKind::Colon        |
+                TokenKind::Equals       |
+                TokenKind::OpenParen    |
+                TokenKind::CloseParen   |
+                TokenKind::OpenCurly    |
+                TokenKind::CloseCurly   |
+                TokenKind::Semicolon => {
+                    let loc_msg = fmt_loc_err( self.filename_locations, &token.loc);
+                    user_error!("{} expression for token kind {} not implemented", loc_msg, token_kind_name(token.token_kind));                    
                 }
             };
             expr
@@ -311,6 +323,7 @@ impl<'a> Parser<'a> {
                     AstStatement::Expr( self.parse_expr() )
 
                 },
+                TokenKind::Number |
                 TokenKind::Literal |
                 TokenKind::OpenParen |
                 TokenKind::CloseParen |

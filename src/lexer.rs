@@ -144,11 +144,13 @@ impl<'a> Lexer<'a> {
         self.last_idx = self.line_end;
     }
 
-    pub fn is_name(ch:char) -> bool {
-        ch.is_alphanumeric() || ch == '_'
+    pub fn is_digit(ch:char) -> bool {
+        ch.is_digit(10) || ch == '.'
     }
-    pub fn is_number(ch:char) -> bool {
-        ch.is_alphanumeric() || ch == '.'
+
+    pub fn is_name(ch:char) -> bool {
+        // AF TODO CHECK .
+        ch.is_alphanumeric() || ch == '_' || ch == '.'
     }
 
     pub fn get_string(&self,  text_start:usize, text_len:usize) -> String {
@@ -230,7 +232,11 @@ impl<'a> Lexer<'a> {
             token_len += 1;
         }
         if token_len > 0  {
-            let opt_token =  Some( self.extract_token(TokenKind::Name, token_len ));
+            let is_number = Self::is_digit( self.content[self.cur_idx] );
+            let opt_token =  if is_number {
+                Some( self.extract_token(TokenKind::Number, token_len )) } else{
+                Some( self.extract_token(TokenKind::Name, token_len )) };
+
             //println!( "NEXT TOKEN KIND: {:?}", &opt_token);
             return opt_token
         }
