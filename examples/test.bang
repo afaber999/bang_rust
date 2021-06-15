@@ -1,7 +1,11 @@
-var x:i64;
+#var i:i64;
+
 
 proc main() 
 {
+    while (false) {
+        write("loop\n");
+    }
     #i = 0;
     #while (i<10)
     #    write("Hey!\n");

@@ -11,6 +11,7 @@ pub enum TokenKind {
     Semicolon,
     Literal,
     Colon,
+    Equals,
 }
 
 
@@ -24,6 +25,7 @@ pub fn token_kind_name(token_kind : TokenKind ) -> &'static str {
         TokenKind::Semicolon => "Semicolon",
         TokenKind::Literal => "Literal",
         TokenKind::Colon => ":",
+        TokenKind::Equals => "=",
     }
 }
 

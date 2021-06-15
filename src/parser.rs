@@ -11,10 +11,19 @@ pub struct AstIfStatement {
     pub else_block : Option<Box<AstBlock>>, 
 }
 
+#[derive(Debug)]
+pub struct AstWhileStatement {
+    pub loc        : Location,    
+    pub condition  : AstExpr,
+    pub block      : Box<AstBlock>,
+}
+
 #[derive(Debug, VariantCount)]
 pub enum AstStatement {
     Expr( AstExpr),
     If( AstIfStatement ),
+    VarAssign(AstVarAssign),
+    While( AstWhileStatement ),
 }
 
 #[derive(Debug)]
@@ -57,6 +66,14 @@ pub struct AstVarDef {
     pub name     : String,
     pub var_type : AstTypes,
 } 
+
+#[derive(Debug)]
+pub struct AstVarAssign {
+    pub loc  : Location,    
+    pub name : String,
+    pub expr : AstExpr,
+} 
+
 
 #[derive(Debug, VariantCount)]
 pub enum AstTop {
@@ -165,7 +182,7 @@ impl<'a> Parser<'a> {
 
         println!("---------- PARSE EXPR ");
 
-        if let Some( token ) = self.lexer.peek() {
+        if let Some( token ) = self.lexer.peek(0) {
 
             let name = self.lexer.get_string(token.text_start, token.text_len);
             println!("GOT PEEKED TOKEN FOR EXPR {} Name: {}", token_kind_name(token.token_kind), name);
@@ -213,7 +230,7 @@ impl<'a> Parser<'a> {
 
     fn parse_if(&mut self) ->AstStatement {
 
-        println!("---------- PARSE STATMENT ");
+        println!("---------- PARSE IF STATMENT ");
 
         let token = self.lexer.expect_keyword("if");
 
@@ -225,7 +242,7 @@ impl<'a> Parser<'a> {
 
         let mut else_block = None;
 
-        if let Some( token ) = self.lexer.peek() {
+        if let Some( token ) = self.lexer.peek(0) {
             if self.lexer.is_keyword(&token, "else") {
                 self.lexer.next();
                 println!("ELSE block");
@@ -242,18 +259,54 @@ impl<'a> Parser<'a> {
         })
     }
 
+    fn parse_while(&mut self) ->AstStatement {
+
+        println!("---------- PARSE WHILE STATMENT ");
+
+        let token = self.lexer.expect_keyword("while");
+
+        // open and close paren
+        self.lexer.expect_token_next(TokenKind::OpenParen);
+        let expr = self.parse_expr();
+        self.lexer.expect_token_next(TokenKind::CloseParen);
+        let block = Box::new( self.parse_curly_block() ); 
+
+
+        AstStatement::While( AstWhileStatement {
+            loc : token.loc,
+            condition: expr,
+            block,
+        })
+    }
+
     fn parse_statement(&mut self) -> AstStatement {
 
         println!("---------- PARSE STATMENT ");
 
-        if let Some( token ) = self.lexer.peek() {
+        if let Some( token ) = self.lexer.peek(0) {
 
             let stmt = match token.token_kind {
 
                 TokenKind::Name => {
+
+                    // check if statement
                     if self.lexer.is_keyword(&token, "if") {
                         return self.parse_if();
                     } 
+
+                    // check var assignment statement
+                    if let Some(next_token) = self.lexer.peek(1) {
+                        if next_token.token_kind == TokenKind::Equals  {
+                            return self.parse_var_assign()
+                            
+                        }
+                    }
+
+                    // check if statement
+                    if self.lexer.is_keyword(&token, "while") {
+                        return self.parse_while();
+                    } 
+
                     println!("---------- PARSE STATMENT AS EXPRESSION ");
                     AstStatement::Expr( self.parse_expr() )
 
@@ -264,11 +317,16 @@ impl<'a> Parser<'a> {
                 TokenKind::OpenCurly |
                 TokenKind::CloseCurly |
                 TokenKind::Colon |
+                TokenKind::Equals |
                 TokenKind::Semicolon  => {
-                    user_error!("Unknown statement ")
-                }
+
+                let loc_msg = fmt_loc_err( 
+                    self.filename_locations, 
+                    &token.loc);
+                user_error!("{} statement starts with {} ", loc_msg, token_kind_name(token.token_kind));                }
             };
             
+            // default to an expression
             self.lexer.expect_token_next(TokenKind::Semicolon);
 
             stmt
@@ -290,7 +348,7 @@ impl<'a> Parser<'a> {
         self.lexer.expect_token_next(TokenKind::OpenCurly);
 
 
-        while let Some(token) = self.lexer.peek() {
+        while let Some(token) = self.lexer.peek(0) {
             if token.token_kind == TokenKind::CloseCurly {
                 break;
             }
@@ -360,14 +418,14 @@ impl<'a> Parser<'a> {
 
 
     fn parse_var_def(&mut self) -> AstVarDef {
-        println!("---------- PARSE VAR ");
+        println!("---------- PARSE VAR DEF");
 
         // check var token
         let token = self.lexer.expect_keyword("var");
         let loc = token.loc;
 
         // expect name of var token
-        let _ = self.lexer.expect_token_next(TokenKind::Name);
+        let token = self.lexer.expect_token_next(TokenKind::Name);
         let name = self.lexer.get_string(token.text_start, token.text_len);
         
         // expect colon
@@ -380,6 +438,26 @@ impl<'a> Parser<'a> {
 
         AstVarDef { loc, name, var_type }
     }
+
+
+    fn parse_var_assign(&mut self) -> AstStatement {
+        println!("---------- PARSE VAR ASSIGN ");
+
+        // check var token
+        let token = self.lexer.expect_token_next(TokenKind::Name);
+        let name = self.lexer.get_string(token.text_start, token.text_len);
+        let loc = token.loc;
+        let _ = self.lexer.expect_token_next(TokenKind::Equals);
+        let expr  = self.parse_expr();
+        let _ = self.lexer.expect_token_next(TokenKind::Semicolon);
+
+        AstStatement::VarAssign( AstVarAssign {
+            loc,
+            name,
+            expr,
+        } )
+    }
+
 
     fn parse_top(&mut self, token : &Token) -> AstTop {
         println!("---------- PARSE TOP ");
@@ -408,7 +486,7 @@ impl<'a> Parser<'a> {
         let mut tops = Vec::new();
 
         // while we got tokens left, parse top defs
-        while let Some(token) = self.lexer.peek() {
+        while let Some(token) = self.lexer.peek(0) {
             tops.push( self.parse_top(&token) );
         }
 

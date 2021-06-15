@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::{Path};
 use crate::location::{FileNameLocations, fmt_loc_err};
-use crate::parser::{AstBlock, AstExpr, AstFunCall, AstIfStatement, AstModule, AstProcDef, AstStatement, AstTop, AstVarDef};
+use crate::parser::{AstBlock, AstExpr, AstFunCall, AstIfStatement, AstModule, AstProcDef, AstStatement, AstTop, AstTypes, AstVarAssign, AstVarDef, AstWhileStatement};
 use crate::basm_instructions::{BasmInstruction, basm_instruction_opcode};
 
 use std::fs::File;
@@ -17,6 +17,7 @@ pub struct BasmCompiler<'a> {
     program             : Vec<i64>,
     memory              : Vec<u8>,
     externals           : HashMap<String, BMword>,
+    global_vars         : HashMap<String, BMword>,
     entry               : BMaddr,
     filename_locations  : &'a FileNameLocations,
 }
@@ -28,6 +29,7 @@ impl<'a> BasmCompiler<'a> {
             program     : Vec::new(),
             memory      : Vec::new(),
             externals   : HashMap::new(),
+            global_vars : HashMap::new(),
             entry       : 0,
             filename_locations,            
         }
@@ -226,10 +228,42 @@ impl<'a> BasmCompiler<'a> {
             let jmp_addr = (self.program.len() / 2 )  as BMword;
             self.program[jmp_no_if_op] = jmp_addr;   
         }
+    }
 
+    fn compile_while_statement(&mut self, while_statement: &AstWhileStatement) {
 
+        println!("Compile while instruction condition ");
+        let start_while_addr = (self.program.len() / 2 )  as BMword;
 
+        self.compile_expr(&while_statement.condition);
+        self.basm_push_inst(&BasmInstruction::NOT, 0);
+        let end_while_jmp = self.basm_push_inst(&BasmInstruction::JMPIf, 0) + 1;
 
+        self.compile_block(&while_statement.block);
+
+        self.basm_push_inst(&BasmInstruction::JMP, start_while_addr);
+        let end_while_addr = (self.program.len() / 2 )  as BMword;
+
+        self.program[end_while_jmp] = end_while_addr; 
+
+    }
+
+    
+    fn compile_var_assign(&mut self, var_assign :&AstVarAssign ) {
+
+        println!("compile_var_assign ");
+        if let Some( addr ) = self.global_vars.get( &var_assign.name) {
+            self.basm_push_inst(&BasmInstruction::PUSH, *addr);
+
+            self.compile_expr(&var_assign.expr);
+            self.basm_push_inst(&BasmInstruction::WRITE64, 0);
+            return
+        }
+
+        let loc_msg = fmt_loc_err( self.filename_locations, &var_assign.loc);
+        user_error!("{} Can't find address for variable name {}",
+            loc_msg,
+            &var_assign.name);            
     }
 
     pub fn compile_statement(&mut self, stmt: &AstStatement) {
@@ -241,6 +275,12 @@ impl<'a> BasmCompiler<'a> {
             AstStatement::If(if_statement) => {
                 self.compile_if_statment( &if_statement);
             }
+            AstStatement::VarAssign(var_assign) => {
+                self.compile_var_assign(var_assign)
+            },
+            AstStatement::While(while_stmt) => {
+                self.compile_while_statement(while_stmt)
+            },
         }
     }
 
@@ -261,11 +301,23 @@ impl<'a> BasmCompiler<'a> {
 
     }
 
-    fn compile_var_def(&mut self, _var_def :&AstVarDef ) {
+    fn compile_var_def(&mut self, var_def :&AstVarDef ) {
 
         println!("compile_var_def ");
-        todo!()
+
+        match &var_def.var_type {
+            AstTypes::I64 => {
+                let bt_array = vec![0,0,0,0 as u8];
+                let (addr, _) = self.push_buffer_to_memory(&bt_array);                
+                println!("$$$$$$$$$$$$$$ GLOBAL VAR {} at ADDR {}", &var_def.name, &addr);
+
+                // TODO DOES NOT CHECK IF VAR EXIST
+                self.global_vars.insert(var_def.name.clone(), addr);
+            },
+        }
     }
+
+
 
     pub fn compile(&mut self, module :&AstModule ) {
         // insert native write function
@@ -275,7 +327,6 @@ impl<'a> BasmCompiler<'a> {
         // let bt_array = vec![0,0,0,0 as u8];
         // let (x_addr, _) = self.push_buffer_to_memory(&bt_array);
         // self.x_addr = x_addr;
-        // println!("$$$$$$$$$$$$$$ MEMOERY ADDRESS FOR X IS {}", self.x_addr);
 
         for top in &module.tops {
             match top {

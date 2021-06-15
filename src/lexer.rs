@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::{usize};
 use crate::location::FileNameLocations;
 use crate::location::Location;
@@ -18,7 +19,8 @@ pub struct Lexer<'a> {
 
     file_idx   : usize,
     filename_locations : &'a FileNameLocations,
-    peek_token : Option<Token>,
+    //peek_token : Option<Token>,
+    peek_buffer: VecDeque<Token>,
 }
 
 impl<'a> Lexer<'a> {
@@ -36,7 +38,7 @@ impl<'a> Lexer<'a> {
             row       : 0,
             file_idx,
             filename_locations,
-            peek_token:None
+            peek_buffer: VecDeque::new()
         };
         result.set_line_end();
         //result.dump();
@@ -95,7 +97,7 @@ impl<'a> Lexer<'a> {
                 return false;
             }
         }
-        println!("STARTSWITH: {}", &value);
+        //println!("STARTSWITH: {}", &value);
 
         true    
     }
@@ -179,23 +181,9 @@ impl<'a> Lexer<'a> {
         result
     }
 
-    pub fn peek(&mut self) -> Option<Token>{
-        self.peek_token = self.next();
-        //println!( "PEEK TOKEN KIND: {:?}", self.peek_token);
-        self.peek_token        
-    }
 
-
-    pub fn next(&mut self) -> Option<Token>{
-        // works for now, need to refactor later
-        if self.peek_token.is_some() {
-            let token = self.peek_token;
-            self.peek_token = None;
-            //println!( "NEXT TOKEN KIND: {:?}", &token);
-            return token;
-        }
-
-        println!("CHECK LINE: ");
+    fn bang_lexer_next_token_bypassing_peek_buffer(&mut self) -> Option<Token>{
+        //println!("CHECK LINE: ");
 
         loop {
             // eat all white spaces at begin and end of current line
@@ -223,6 +211,7 @@ impl<'a> Lexer<'a> {
         hardcoded_tokens.insert("}", TokenKind::CloseCurly );
         hardcoded_tokens.insert(";", TokenKind::Semicolon );
         hardcoded_tokens.insert(":", TokenKind::Colon );
+        hardcoded_tokens.insert("=", TokenKind::Equals );
 
         for (token_text, token_kind) in hardcoded_tokens.iter() {
             if self.starts_with( &token_text ) {
@@ -244,7 +233,7 @@ impl<'a> Lexer<'a> {
             let opt_token =  Some( self.extract_token(TokenKind::Name, token_len ));
             //println!( "NEXT TOKEN KIND: {:?}", &opt_token);
             return opt_token
-    }
+        }
 
         // string literal
         if self.content[ self.cur_idx] == '\"' {
@@ -262,18 +251,56 @@ impl<'a> Lexer<'a> {
             } else {
                 panic!("Missing closing character on string literal");
             }
-    
         } 
 
-
         self.dump();
-        panic!("Cur idx is {} ch is {}", self.cur_idx , self.content[self.cur_idx]);
-        // Some( Token::new( 
-        //     TokenType::Name,
-        //     self.cur_idx, 
-        //     self.line_len(), 
-        //     self.get_location() ) )
+        let loc_msg = fmt_loc_err( self.filename_locations, &self.get_location());
+        user_error!("{} Unexpected character {}",loc_msg, self.content[self.cur_idx]);
     }
+
+
+    
+    pub fn refill_peek_buffer(&mut self) {
+        const PEEK_BUFFER_CAPACITY : usize = 2;
+        while self.peek_buffer.len() <  PEEK_BUFFER_CAPACITY {
+            if let Some( next_token ) = self.bang_lexer_next_token_bypassing_peek_buffer() {
+                self.peek_buffer.push_back(next_token);
+            } else {
+                // reached of of stream
+                //println!("LEXER ====== REFILL END OF STREAM");
+                break;
+            }
+        }
+        //println!("LEXER ====== REFILL PEEK BUFFER  {:?}", &self.peek_buffer);
+
+    }
+    
+
+
+    pub fn peek(&mut self, offset : usize ) -> Option<Token>{
+
+        self.refill_peek_buffer();
+
+        if offset < self.peek_buffer.len() {
+            let token = self.peek_buffer[offset]; 
+            //println!("PEEK ====== OFFSET {} RETURNS  {:?}", offset, &token);
+            return Some(token);
+
+        }
+        //println!("PEEK ====== return NONE");
+        None
+    }
+
+
+    pub fn next(&mut self) -> Option<Token>{
+        self.refill_peek_buffer();
+        let token = self.peek_buffer.pop_front();
+        //println!("LEXER ====== NEXT TOKEN {:?}", &token);
+        token
+    }
+
+
+
 
     pub fn is_keyword(&mut self, token: &Token, keyword : &str) -> bool {
         if token.token_kind != TokenKind::Name {
