@@ -382,31 +382,25 @@ impl<'a> Parser<'a> {
         println!("---------- PARSE STATMENT ");
 
         if let Some( token ) = self.lexer.peek(0) {
-
-            let stmt = match token.token_kind {
-
+            match token.token_kind {
                 TokenKind::Name => {
 
-                    // check if statement
+                    // check if statement, return no semicolon needed
                     if self.lexer.is_keyword(&token, "if") {
                         return self.parse_if();
                     } 
 
-                    // check var assignment statement
+                    // check if statement, return no semicolon needed
+                    if self.lexer.is_keyword(&token, "while") {
+                        return self.parse_while();
+                    }
+
+                    // check var assignment statement, semicoln parsed inside var_assign
                     if let Some(next_token) = self.lexer.peek(1) {
                         if next_token.token_kind == TokenKind::Equals  {
                             return self.parse_var_assign()
                         }
                     }
-
-                    // check if statement
-                    if self.lexer.is_keyword(&token, "while") {
-                        return self.parse_while();
-                    } 
-
-                    println!("---------- PARSE STATMENT AS EXPRESSION ");
-                    AstStatement::Expr( self.parse_expr() )
-
                 },
                 TokenKind::Number |
                 TokenKind::Literal |
@@ -419,16 +413,14 @@ impl<'a> Parser<'a> {
                 TokenKind::Plus |
                 TokenKind::Less |
                 TokenKind::Semicolon  => {
-
-                let loc_msg = fmt_loc_err( 
-                    self.filename_locations, 
-                    &token.loc);
-                user_error!("{} statement starts with {} ", loc_msg, token_kind_name(token.token_kind));                }
+                    // fallthrough, parse as an expression with a semicolon
+                }
             };
             
-            // default to an expression
+            // parse as exprssion with a semicolon
+            println!("---------- PARSE STATMENT AS EXPRESSION ");
+            let stmt = AstStatement::Expr( self.parse_expr() );
             self.lexer.expect_token_next(TokenKind::Semicolon);
-
             stmt
 
         } else {

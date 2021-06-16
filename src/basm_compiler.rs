@@ -371,10 +371,11 @@ impl<'a> BasmCompiler<'a> {
         println!("compile_statement: {:?}", &stmt);
         match &stmt {
             AstStatement::Expr(expr) => {
-                self.compile_expr(&expr);
-
-                // drop expression result if needed
-                //self.basm_push_inst(&BasmInstruction::DROP, 0);
+                let compiled_expr = self.compile_expr(&expr);
+                if compiled_expr.expr_type !=  AstTypes::VOID {
+                    // drop if expression type is non void
+                    self.basm_push_inst(&BasmInstruction::DROP, 0);
+                }
             },
             AstStatement::If(if_statement) => {
                 self.compile_if_statment( &if_statement);

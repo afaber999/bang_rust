@@ -1,13 +1,4 @@
-var i:i64;
-
-
-
-proc main() 
-{
-    i = 0;
-    while i<10 {
-        write("Hey!\n");
-        i = i + 1;
-    }
-    write("End!\n");
+proc main() {
+    write( 1+2+3);
+    write( "OK end\n");
 }
