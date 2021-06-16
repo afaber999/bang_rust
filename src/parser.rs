@@ -170,15 +170,22 @@ impl<'a> Parser<'a> {
 
     fn parse_func_call_args(&mut self) -> Vec<AstExpr> {
 
+
         println!("---------- PARSE FUNC_CALL ARGS ");
+        let mut args_expr = Vec::new();
 
         self.lexer.expect_token_next(TokenKind::OpenParen);
 
-        let firstarg_expr = self.parse_expr();
 
+        if let Some( next_token ) = self.lexer.peek(0) {
+            if  next_token.token_kind != TokenKind::CloseParen {
+                let firstarg_expr = self.parse_expr();
+                args_expr.push(firstarg_expr);
+            }
+        }
         self.lexer.expect_token_next(TokenKind::CloseParen);
 
-        vec![firstarg_expr]
+        args_expr
     }
 
     fn parse_func_call(&mut self) -> AstFunCall {
@@ -189,14 +196,16 @@ impl<'a> Parser<'a> {
         let name = self.lexer.get_string(token.text_start, token.text_len);
 
         let args = self.parse_func_call_args();
+        return AstFunCall { name, args, loc : token.loc };
 
-        if name =="write" {
-            // AF TODO FILL IN ATCUAL EXPRESSION
-            return AstFunCall { name, args, loc : token.loc };
-        }
+        // AF REMOVE
+        // if name =="write" {
+        //     // AF TODO FILL IN ATCUAL EXPRESSION
+        //     return AstFunCall { name, args, loc : token.loc };
+        // }
 
-        let loc_msg = fmt_loc_err( self.filename_locations, &token.loc);
-        user_error!("{} unknown function name '{}'", loc_msg, &name);
+        // let loc_msg = fmt_loc_err( self.filename_locations, &token.loc);
+        // user_error!("{} unknown function name '{}'", loc_msg, &name);
     }
 
     fn parse_var_read(&mut self) -> AstVarRead {

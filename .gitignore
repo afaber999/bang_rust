@@ -1,3 +1,5 @@
 /target
 /basm_tools
 
+/examples/*.bm
+

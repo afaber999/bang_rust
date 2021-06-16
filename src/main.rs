@@ -90,7 +90,7 @@ fn main() -> Result<()> {
 
     let mut basm_compiler = BasmCompiler::new(&filename_locations);
 
-    basm_compiler.compile( &module);
+    basm_compiler.compile( &module, "main");
     basm_compiler.write_to_bm(&output_file_path);
 
     //basm_compiler.save(&output_file_path);

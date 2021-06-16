@@ -29,6 +29,13 @@ impl FileNameLocations {
     }
 }
 
+pub fn fmt_loc( file_locations: &FileNameLocations, loc: &Location) -> String {
+    format!( "{}:{}:{}", 
+        file_locations.get(loc.file_idx),
+        loc.row + 1,
+        loc.col + 1)
+}
+
 pub fn fmt_loc_err( file_locations: &FileNameLocations, loc: &Location) -> String {
     format!( "{}:{}:{}: error:", 
         file_locations.get(loc.file_idx),

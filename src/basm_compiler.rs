@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::path::{Path};
-use crate::location::{FileNameLocations, fmt_loc_err};
+use crate::location::{FileNameLocations, Location, fmt_loc, fmt_loc_err};
 use crate::parser::{AstBinaryOp, AstBlock, AstExpr, AstFunCall, AstIfStatement, AstModule, AstProcDef, AstStatement, AstTop, AstTypes, AstVarAssign, AstVarDef, AstVarRead, AstWhileStatement};
 use crate::basm_instructions::{BasmInstruction, basm_instruction_opcode};
 
@@ -25,6 +25,11 @@ pub struct GlobalVar {
     pub var_type : AstTypes,
 }
 
+#[derive(Debug)]
+pub struct CompiledProc {
+    pub loc       : Location,
+    pub inst_addr : BMaddr,
+}
 
 #[derive(Debug)]
 pub struct BasmCompiler<'a> {
@@ -32,6 +37,7 @@ pub struct BasmCompiler<'a> {
     memory              : Vec<u8>,
     externals           : HashMap<String, BMword>,
     global_vars         : HashMap<String, GlobalVar>,
+    procedures          : HashMap<String, CompiledProc>,
     entry               : BMaddr,
     filename_locations  : &'a FileNameLocations,
 }
@@ -44,6 +50,7 @@ impl<'a> BasmCompiler<'a> {
             memory      : Vec::new(),
             externals   : HashMap::new(),
             global_vars : HashMap::new(),
+            procedures  : HashMap::new(),
             entry       : 0,
             filename_locations,            
         }
@@ -147,9 +154,6 @@ impl<'a> BasmCompiler<'a> {
         drop(file);     
     }
 
-
-
-
     fn compile_binary_op(&mut self, binary_op: &AstBinaryOp) -> AstTypes {
         
         let loc_msg = fmt_loc_err( self.filename_locations, &binary_op.loc);
@@ -190,33 +194,34 @@ impl<'a> BasmCompiler<'a> {
                 // TODO only built in functions are supported at this point in time
                 println!("AstExprKind::FuncCall: {:?}", func_call);
 
-                // if func_call.name == "true" {
-                //     self.basm_push_inst(&BasmInstruction::PUSH, 1);
-                // }
-                // else if func_call.name == "false" {
-                //     self.basm_push_inst(&BasmInstruction::PUSH, 0);
-                // } else 
-                {
-                    let mut func_idx : i64 = -1;
-                    if let Some(idx)= self.externals.get(&func_call.name) {
-                        func_idx = *idx as i64;
-                    }
-    
-                    if func_idx >= 0 {
-    
-                        // check arity
-                        self.check_function_arity(&func_call, 1); 
-    
-                        // compile the argument
-                        self.compile_expr(&func_call.args[0]);
-    
-                        println!("FUNC IDX : {:?}", func_idx);
-                        // do function call
-                        self.basm_push_inst(&BasmInstruction::NATIVE, func_idx);                    
-                    } else {
-                        user_error!("Only native functions are supported");
-                    }    
+                let mut func_idx : i64 = -1;
+                if let Some(idx)= self.externals.get(&func_call.name) {
+                    func_idx = *idx as i64;
                 }
+
+                if func_idx >= 0 {
+
+                    // check arity
+                    self.check_function_arity(&func_call, 1); 
+
+                    // compile the argument
+                    self.compile_expr(&func_call.args[0]);
+
+                    println!("FUNC IDX : {:?}", func_idx);
+                    // do function call
+                    self.basm_push_inst(&BasmInstruction::NATIVE, func_idx);                    
+                } else {
+                    if let Some(compiled_proc)= self.procedures.get(&func_call.name) {
+                        let proc_addr = compiled_proc.inst_addr as BMword;
+                        self.basm_push_inst(&BasmInstruction::CALL,proc_addr);
+
+                    } else {
+                        let loc_msg = fmt_loc_err( self.filename_locations, &func_call.loc);
+                        user_error!("{} Can't find definition for function name  {}",
+                            loc_msg,
+                            &func_call.name);
+                    }
+                }    
             },
             AstExpr::LitString(literal) => {
                 // AF TODO remove quotes?
@@ -402,15 +407,32 @@ impl<'a> BasmCompiler<'a> {
         self.program.len() /2
     }
 
-    fn compile_proc_def(&mut self, proc_def :&AstProcDef ) -> BMaddr {
+    fn compile_proc_def(&mut self, proc_def :&AstProcDef ) {
 
         println!("compile_proc_def ");
-        let addr = self.get_inst_addr();
+        let inst_addr = self.get_inst_addr();
+        let name = proc_def.name.clone();
+        let loc = proc_def.loc;
+
         let body = &proc_def.body;
         self.compile_block( &body );
-        addr
+        self.basm_push_inst(&BasmInstruction::RET, 0);
+        
+        // check if name already exist
+        if let Some( existing_proc) = self.procedures.get(&name) {
+            let loc_msg = fmt_loc_err( self.filename_locations, &proc_def.loc);
+            user_error!("{} procedure with name {} is already defined at {}", 
+                loc_msg,
+                &name,
+                fmt_loc(self.filename_locations, &existing_proc.loc));
+        }
 
+        self.procedures.insert(name, CompiledProc {
+            loc,
+            inst_addr,
+        });
     }
+
 
     fn compile_var_def(&mut self, var_def :&AstVarDef ){
 
@@ -423,8 +445,6 @@ impl<'a> BasmCompiler<'a> {
                 let var_addr = addr as BMaddr;
                 let var_type = var_def.var_type;
 
-                println!("$$$$$$$$$$$$$$ GLOBAL VAR {} at ADDR {}", &var_def.name, &var_addr);
-
                 // TODO DOES NOT CHECK IF VAR EXIST
                 self.global_vars.insert(var_def.name.clone(), GlobalVar {
                     var_addr,
@@ -434,11 +454,37 @@ impl<'a> BasmCompiler<'a> {
             AstTypes::VOID => {
                 let loc_msg = fmt_loc_err( self.filename_locations, &var_def.loc);
                     user_error!("{} definining variables with type void is not allowed",
-                    loc_msg);               },        
+                    loc_msg);
+            },        
         }
     }
 
-    pub fn compile(&mut self, module :&AstModule ) {
+
+    fn generate_entry_point(&mut self, entry_name : &str ) {
+
+        if let Some( entry_proc) = self.procedures.get(entry_name) {
+            // set entry point to this startup code
+            self.entry = self.get_inst_addr();
+
+            // create startup code by making call to entry function, halt on return
+            let entry_proc_addr = entry_proc.inst_addr  as BMword;
+            self.basm_push_inst(&BasmInstruction::CALL,entry_proc_addr);
+            self.basm_push_inst(&BasmInstruction::HALT, 0);
+
+        } else {
+            let loc = Location {
+                row: 0,
+                col: 0,
+                file_idx: 0,
+            };
+            let loc_msg = fmt_loc_err( self.filename_locations, &loc);
+            user_error!("{} can't find entry procedure with {}", loc_msg, entry_name);
+        }
+
+
+    }
+
+    pub fn compile(&mut self, module :&AstModule, entry_name : &str ) {
 
         // insert native write function
         self.push_external_native( "write".to_string() );
@@ -446,8 +492,7 @@ impl<'a> BasmCompiler<'a> {
         for top in &module.tops {
             match top {
                 AstTop::ProcDef( proc_def) => {
-                    let _addr = self.compile_proc_def(&proc_def);
-
+                    self.compile_proc_def(&proc_def);
                 } ,
                 AstTop::VarDef( var_def ) => {
                     self.compile_var_def(&var_def);
@@ -455,8 +500,7 @@ impl<'a> BasmCompiler<'a> {
             }
         }
 
-        self.basm_push_inst(&BasmInstruction::HALT, 0);
-
+        self.generate_entry_point(entry_name);
     }
 
 }
