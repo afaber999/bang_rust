@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::{Path};
 use crate::location::{FileNameLocations, Location, fmt_loc, fmt_loc_err};
-use crate::parser::{AstBinaryOp, AstBlock, AstExpr, AstFunCall, AstIfStatement, AstModule, AstProcDef, AstStatement, AstTop, AstTypes, AstVarAssign, AstVarDef, AstVarRead, AstWhileStatement};
+use crate::parser::{AstBinaryOp, AstBlock, AstExpr, AstFunCall, AstIfStatement, AstModule, AstProcDef, AstStatement, AstTop, AstTypes, AstVarAssign, AstVarDef, AstVarRead, AstWhileStatement, expr_kind_to_name};
 use crate::basm_instructions::{BasmInstruction, basm_instruction_opcode};
 
 use std::fs::File;
@@ -206,9 +206,34 @@ impl<'a> BasmCompiler<'a> {
                     // compile the argument
                     self.compile_expr(&func_call.args[0]);
 
-                    println!("FUNC IDX : {:?}", func_idx);
+                    // println!("FUNC IDX : {:?}", func_idx);
                     // do function call
-                    self.basm_push_inst(&BasmInstruction::NATIVE, func_idx);                    
+                    self.basm_push_inst(&BasmInstruction::NATIVE, func_idx);
+
+                } else if  func_call.name == "ptr" {
+
+                    self.check_function_arity(&func_call, 1);
+                    let arg = &func_call.args[0];
+                    if let AstExpr::VarRead( var_read ) = arg {
+
+                        if let Some( global_var ) = self.global_vars.get( &var_read.name) {
+
+                            let var_type = global_var.def.var_type;
+                            let var_addr = global_var.addr;
+                
+                            self.basm_push_inst(&BasmInstruction::PUSH, var_addr as BMword);
+                            expr_type = AstTypes::PTR;
+                        } else {
+                            let loc_msg = fmt_loc_err( self.filename_locations, &var_read.loc);
+                            user_error!("{} Can't read variable name {}",
+                                loc_msg,
+                                &var_read.name); 
+                        }
+                    } else {
+                        let loc_msg = fmt_loc_err( self.filename_locations, &func_call.loc);
+                        user_error!("{} Expected variable name of the argument of the ptr function", loc_msg );
+                    }
+                     
                 } else if let Some(compiled_proc)= self.procedures.get(&func_call.name) {
                     let proc_addr = compiled_proc.addr as BMword;
                     self.basm_push_inst(&BasmInstruction::CALL,proc_addr);
@@ -270,9 +295,19 @@ impl<'a> BasmCompiler<'a> {
             let var_type = global_var.def.var_type;
             let var_addr = global_var.addr;
 
-            self.basm_push_inst(&BasmInstruction::PUSH, var_addr as BMword);
-            self.basm_push_inst(&BasmInstruction::READ64I, 0);
-            return var_type
+            match var_type {
+                AstTypes::VOID => {
+                    unreachable!("Internal error, invalid type in variable assignment {:?}", var_type );
+                },
+
+                AstTypes::PTR |
+                AstTypes::BOOL |
+                AstTypes::I64 => {
+                    self.basm_push_inst(&BasmInstruction::PUSH, var_addr as BMword);
+                    self.basm_push_inst(&BasmInstruction::READ64I, 0);
+                    return var_type
+                },
+            }
         }
 
         let loc_msg = fmt_loc_err( self.filename_locations, &var_read.loc);

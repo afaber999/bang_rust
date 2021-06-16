@@ -110,6 +110,23 @@ pub struct AstModule {
     pub tops: Vec<AstTop>,
 }
 
+
+pub fn expr_kind_to_name(expr : &AstExpr) -> &'static str {
+    match expr {
+        AstExpr::FuncCall(_) => "function call",
+        AstExpr::LitFloat(_) => "float literal",
+        AstExpr::LitInt(_) => "integral literal",
+        AstExpr::LitChar(_) => "char literal",
+        AstExpr::LitString(_) => "string literal",
+        AstExpr::LitBool(_) => "bool literal",
+        AstExpr::VarRead(_) => "read variable",
+        AstExpr::BinarayOp(_) => "binary operator",
+    }
+}
+
+
+
+
 #[derive(Debug)]
 pub struct Parser<'a> {
     lexer : Lexer<'a>,
@@ -198,23 +215,14 @@ impl<'a> Parser<'a> {
         let name = self.lexer.get_string(token.text_start, token.text_len);
 
         let args = self.parse_func_call_args();
-        AstFunCall { name, args, loc : token.loc }
-
-        // AF REMOVE
-        // if name =="write" {
-        //     // AF TODO FILL IN ATCUAL EXPRESSION
-        //     return AstFunCall { name, args, loc : token.loc };
-        // }
-
-        // let loc_msg = fmt_loc_err( self.filename_locations, &token.loc);
-        // user_error!("{} unknown function name '{}'", loc_msg, &name);
+        AstFunCall { loc : token.loc, name, args }
     }
 
     fn parse_var_read(&mut self) -> AstVarRead {
         println!("---------- PARSE VAR READ ");
         let token = self.lexer.expect_token_next(TokenKind::Name);
         let name = self.lexer.get_string(token.text_start, token.text_len);
-        AstVarRead { name, loc : token.loc }
+        AstVarRead { loc : token.loc, name }
     }
  
     fn parse_primary_expr(&mut self) -> AstExpr {

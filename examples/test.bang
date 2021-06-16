@@ -1,15 +1,8 @@
-var i: i64;
+var x: i64;
 var p: ptr;
 
 proc main() {
-
-  # p = i;
-
-  write("Begin\n");
-  i = 0;
-  while i < 10 {
-    write("Hey!\n");
-    i = i + 1;
-  }
-  write("End\n");
+  p = ptr(x);
+  p;
+  # write("End\n");
 }
