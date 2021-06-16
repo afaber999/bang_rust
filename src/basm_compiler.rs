@@ -20,15 +20,15 @@ pub struct CompiledExpr {
 }
 
 #[derive(Debug)]
-pub struct GlobalVar {
-    pub var_addr : BMaddr,
-    pub var_type : AstTypes,
+pub struct CompiledVar {
+    pub def  : AstVarDef,
+    pub addr : BMaddr,
 }
 
 #[derive(Debug)]
 pub struct CompiledProc {
-    pub loc       : Location,
-    pub inst_addr : BMaddr,
+    pub def  : AstProcDef,
+    pub addr : BMaddr,
 }
 
 #[derive(Debug)]
@@ -36,7 +36,7 @@ pub struct BasmCompiler<'a> {
     program             : Vec<i64>,
     memory              : Vec<u8>,
     externals           : HashMap<String, BMword>,
-    global_vars         : HashMap<String, GlobalVar>,
+    global_vars         : HashMap<String, CompiledVar>,
     procedures          : HashMap<String, CompiledProc>,
     entry               : BMaddr,
     filename_locations  : &'a FileNameLocations,
@@ -212,7 +212,7 @@ impl<'a> BasmCompiler<'a> {
                     self.basm_push_inst(&BasmInstruction::NATIVE, func_idx);                    
                 } else {
                     if let Some(compiled_proc)= self.procedures.get(&func_call.name) {
-                        let proc_addr = compiled_proc.inst_addr as BMword;
+                        let proc_addr = compiled_proc.addr as BMword;
                         self.basm_push_inst(&BasmInstruction::CALL,proc_addr);
 
                     } else {
@@ -270,8 +270,8 @@ impl<'a> BasmCompiler<'a> {
         println!("compile_var_read ");
         if let Some( global_var ) = self.global_vars.get( &var_read.name) {
 
-            let var_type = global_var.var_type;
-            let var_addr = global_var.var_addr;
+            let var_type = global_var.def.var_type;
+            let var_addr = global_var.addr;
 
             self.basm_push_inst(&BasmInstruction::PUSH, var_addr as BMword);
             self.basm_push_inst(&BasmInstruction::READ64I, 0);
@@ -358,10 +358,23 @@ impl<'a> BasmCompiler<'a> {
         println!("compile_var_assign ");
         if let Some( global_var ) = self.global_vars.get( &var_assign.name) {
 
-            let var_addr = global_var.var_addr as BMword;
+            let var_addr = global_var.addr as BMword;
+            let var_type = global_var.def.var_type;
+
             self.basm_push_inst(&BasmInstruction::PUSH, var_addr);
 
-            self.compile_expr(&var_assign.expr);
+            let compiled_expr = self.compile_expr(&var_assign.expr);
+
+            if compiled_expr.expr_type != var_type {
+                let loc_msg = fmt_loc_err( self.filename_locations, &var_assign.loc);
+
+                user_error!("{} Can't assign value of type {:?} to variable {} of type {:?}",
+                    loc_msg,
+                    compiled_expr.expr_type,
+                    &var_assign.name,
+                    var_type);         
+            }
+
             self.basm_push_inst(&BasmInstruction::WRITE64, 0);
             return
         }
@@ -412,8 +425,6 @@ impl<'a> BasmCompiler<'a> {
         println!("compile_proc_def ");
         let inst_addr = self.get_inst_addr();
         let name = proc_def.name.clone();
-        let loc = proc_def.loc;
-
         let body = &proc_def.body;
 
         // check if name already exist
@@ -422,13 +433,13 @@ impl<'a> BasmCompiler<'a> {
             user_error!("{} procedure with name {} is already defined at {}", 
                 loc_msg,
                 &name,
-                fmt_loc(self.filename_locations, &existing_proc.loc));
+                fmt_loc(self.filename_locations, &existing_proc.def.loc));
         }
 
         // insert before the block, so we can do recursion!
         self.procedures.insert(name, CompiledProc {
-            loc,
-            inst_addr,
+            def : proc_def.clone(),
+            addr: inst_addr,
         });
 
         self.compile_block( &body );
@@ -442,23 +453,44 @@ impl<'a> BasmCompiler<'a> {
         println!("compile_var_def ");
 
         match &var_def.var_type {
-            AstTypes::I64 => {
-                let bt_array = vec![0,0,0,0,0,0,0,0 as u8];
-                let (addr, _) = self.push_buffer_to_memory(&bt_array);
-                let var_addr = addr as BMaddr;
-                let var_type = var_def.var_type;
-
-                // TODO DOES NOT CHECK IF VAR EXIST
-                self.global_vars.insert(var_def.name.clone(), GlobalVar {
-                    var_addr,
-                    var_type,
-                });
-            },
             AstTypes::VOID => {
                 let loc_msg = fmt_loc_err( self.filename_locations, &var_def.loc);
                     user_error!("{} definining variables with type void is not allowed",
                     loc_msg);
             },        
+            AstTypes::I64 => {
+                let bt_array = vec![0,0,0,0,0,0,0,0 as u8];
+                let (addr, _) = self.push_buffer_to_memory(&bt_array);
+                let addr = addr as BMaddr;
+
+                // TODO DOES NOT CHECK IF VAR EXIST
+                self.global_vars.insert(var_def.name.clone(), CompiledVar {
+                    addr,
+                    def: var_def.clone(),
+                });
+            },
+            AstTypes::BOOL => {
+                let bt_array = vec![0,0,0,0,0,0,0,0 as u8];
+                let (addr, _) = self.push_buffer_to_memory(&bt_array);
+                let addr = addr as BMaddr;
+
+                // TODO DOES NOT CHECK IF VAR EXIST
+                self.global_vars.insert(var_def.name.clone(), CompiledVar {
+                    addr,
+                    def: var_def.clone(),
+                });
+            },             
+            AstTypes::PTR => {
+                let bt_array = vec![0,0,0,0,0,0,0,0 as u8];
+                let (addr, _) = self.push_buffer_to_memory(&bt_array);
+                let addr = addr as BMaddr;
+
+                // TODO DOES NOT CHECK IF VAR EXIST
+                self.global_vars.insert(var_def.name.clone(), CompiledVar {
+                    addr,
+                    def: var_def.clone(),
+                });
+            },             
         }
     }
 
@@ -470,7 +502,7 @@ impl<'a> BasmCompiler<'a> {
             self.entry = self.get_inst_addr();
 
             // create startup code by making call to entry function, halt on return
-            let entry_proc_addr = entry_proc.inst_addr  as BMword;
+            let entry_proc_addr = entry_proc.addr  as BMword;
             self.basm_push_inst(&BasmInstruction::CALL,entry_proc_addr);
             self.basm_push_inst(&BasmInstruction::HALT, 0);
 

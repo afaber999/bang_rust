@@ -1,5 +1,15 @@
+var i: i64;
+var p: ptr;
 
 proc main() {
-  write("recurse!\n");
-  main();
+
+  # p = i;
+
+  write("Begin\n");
+  i = 0;
+  while i < 10 {
+    write("Hey!\n");
+    i = i + 1;
+  }
+  write("End\n");
 }

@@ -3,7 +3,7 @@ extern crate static_assertions as sa;
 
 use variant_count::VariantCount;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AstIfStatement {
     pub loc  : Location,    
     pub condition  : AstExpr,
@@ -11,14 +11,14 @@ pub struct AstIfStatement {
     pub else_block : Option<Box<AstBlock>>, 
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AstWhileStatement {
     pub loc        : Location,    
     pub condition  : AstExpr,
     pub block      : Box<AstBlock>,
 }
 
-#[derive(Debug, VariantCount)]
+#[derive(Debug, Clone, VariantCount)]
 pub enum AstStatement {
     Expr( AstExpr),
     If( AstIfStatement ),
@@ -26,26 +26,26 @@ pub enum AstStatement {
     While( AstWhileStatement ),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AstFunCall {
     pub loc  : Location,
     pub name : String,
     pub args : Vec<AstExpr>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AstVarRead {
     pub loc  : Location,    
     pub name : String,
 } 
 
-#[derive(Debug, VariantCount)]
+#[derive(Debug, Clone, VariantCount)]
 pub enum AstBinaryOpKind {
     Plus,
     Less,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AstBinaryOp {
     pub loc  : Location,
     pub kind : AstBinaryOpKind,
@@ -53,7 +53,7 @@ pub struct AstBinaryOp {
     pub rhs  : Box<AstExpr>,
 } 
 
-#[derive(Debug, VariantCount)]
+#[derive(Debug, Clone, VariantCount)]
 pub enum AstExpr {
     FuncCall(AstFunCall),
     LitFloat(f64),
@@ -65,12 +65,12 @@ pub enum AstExpr {
     BinarayOp(AstBinaryOp),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AstBlock{
     pub statements : Vec<AstStatement>,
 } 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AstProcDef {
     pub loc  : Location,
     pub name : String,
@@ -79,18 +79,20 @@ pub struct AstProcDef {
 
 #[derive(Debug, Clone, Copy,  PartialEq, VariantCount)]
 pub enum AstTypes {
-    I64,
     VOID,
+    I64,
+    BOOL,
+    PTR,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AstVarDef {
     pub loc      : Location,    
     pub name     : String,
     pub var_type : AstTypes,
 } 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AstVarAssign {
     pub loc  : Location,    
     pub name : String,
@@ -500,16 +502,22 @@ impl<'a> Parser<'a> {
         
         match type_name.as_str() {
 
+            "void" => {
+                AstTypes::VOID
+            },
             "i64" => {
                 AstTypes::I64
             },
-            "void" => {
-                AstTypes::VOID
+            "bool" => {
+                AstTypes::BOOL
+            },
+            "ptr" => {
+                AstTypes::PTR
             },
             type_name => {
                 // the code below currently expects 1 type
                 // force compiler error when adding new variant 
-                sa::const_assert!(AstTypes::VARIANT_COUNT ==  2);
+                sa::const_assert!(AstTypes::VARIANT_COUNT ==  4);
             
                 let loc_msg = fmt_loc_err( 
                     self.filename_locations, 
