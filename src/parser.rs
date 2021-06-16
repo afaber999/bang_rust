@@ -77,9 +77,10 @@ pub struct AstProcDef {
     pub body : AstBlock,
 } 
 
-#[derive(Debug, VariantCount)]
+#[derive(Debug, Clone, Copy,  PartialEq, VariantCount)]
 pub enum AstTypes {
     I64,
+    VOID,
 }
 
 #[derive(Debug)]
@@ -336,9 +337,7 @@ impl<'a> Parser<'a> {
         let token = self.lexer.expect_keyword("if");
 
         // open and close paren
-        self.lexer.expect_token_next(TokenKind::OpenParen);
         let expr = self.parse_expr();
-        self.lexer.expect_token_next(TokenKind::CloseParen);
         let then_block = Box::new( self.parse_curly_block() ); 
 
         let mut else_block = None;
@@ -367,9 +366,7 @@ impl<'a> Parser<'a> {
         let token = self.lexer.expect_keyword("while");
 
         // open and close paren
-        self.lexer.expect_token_next(TokenKind::OpenParen);
         let expr = self.parse_expr();
-        self.lexer.expect_token_next(TokenKind::CloseParen);
         let block = Box::new( self.parse_curly_block() ); 
 
 
@@ -505,10 +502,13 @@ impl<'a> Parser<'a> {
             "i64" => {
                 AstTypes::I64
             },
+            "void" => {
+                AstTypes::VOID
+            },
             type_name => {
                 // the code below currently expects 1 type
                 // force compiler error when adding new variant 
-                sa::const_assert!(AstTypes::VARIANT_COUNT ==  1);
+                sa::const_assert!(AstTypes::VARIANT_COUNT ==  2);
             
                 let loc_msg = fmt_loc_err( 
                     self.filename_locations, 

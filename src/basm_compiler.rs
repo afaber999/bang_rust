@@ -12,12 +12,26 @@ const NATIVE_NAME_CAPACITY : usize =  256;
 type BMword = i64;
 type BMaddr = usize;
 
+
+#[derive(Debug)]
+pub struct CompiledExpr {
+    pub inst_addr : BMaddr,
+    pub expr_type : AstTypes,
+}
+
+#[derive(Debug)]
+pub struct GlobalVar {
+    pub var_addr : BMaddr,
+    pub var_type : AstTypes,
+}
+
+
 #[derive(Debug)]
 pub struct BasmCompiler<'a> {
     program             : Vec<i64>,
     memory              : Vec<u8>,
     externals           : HashMap<String, BMword>,
-    global_vars         : HashMap<String, BMword>,
+    global_vars         : HashMap<String, GlobalVar>,
     entry               : BMaddr,
     filename_locations  : &'a FileNameLocations,
 }
@@ -97,7 +111,7 @@ impl<'a> BasmCompiler<'a> {
         file.write(&BM_FILE_VERSION.to_ne_bytes()).expect("write");
 
         // number of INSTRUCTIONS
-        let val  = self.program.len() as u64 / 2;
+        let val  = self.get_inst_addr();
         file.write(&val.to_ne_bytes()).expect("write");
 
         let val  = self.entry as u64;
@@ -133,37 +147,56 @@ impl<'a> BasmCompiler<'a> {
         drop(file);     
     }
 
-    fn compile_binary_op(&mut self, binary_op: &AstBinaryOp) {
+
+
+
+    fn compile_binary_op(&mut self, binary_op: &AstBinaryOp) -> AstTypes {
         
-        self.compile_expr(binary_op.lhs.as_ref());
-        self.compile_expr(binary_op.rhs.as_ref());
+        let loc_msg = fmt_loc_err( self.filename_locations, &binary_op.loc);
+
+        let compiled_lhs = self.compile_expr(binary_op.lhs.as_ref());
+        let compiled_rhs = self.compile_expr(binary_op.rhs.as_ref());
         
         match binary_op.kind {
             crate::parser::AstBinaryOpKind::Plus => {
+
+                if compiled_lhs.expr_type != AstTypes::I64 {
+                    user_error!("{} is not supported for type {:?}",loc_msg, compiled_lhs.expr_type);
+                }      
+                if compiled_rhs.expr_type != AstTypes::I64 {
+                    user_error!("{} is not supported for type {:?}",loc_msg, compiled_rhs.expr_type);
+                }      
+            
                 self.basm_push_inst(&BasmInstruction::PLUSI, 0);
             },
             crate::parser::AstBinaryOpKind::Less => {
+
                 self.basm_push_inst(&BasmInstruction::LTI, 0);
 
             },
         }
+        AstTypes::I64
     }
 
-    fn compile_expr(&mut self, expr: &AstExpr) {
+    fn compile_expr(&mut self, expr: &AstExpr) -> CompiledExpr {
 
         println!("compile_expr {:?}", expr);
+
+        let inst_addr = self.get_inst_addr();
+        let mut expr_type = AstTypes::VOID;
 
         match &expr {
             AstExpr::FuncCall(func_call) => {
                 // TODO only built in functions are supported at this point in time
                 println!("AstExprKind::FuncCall: {:?}", func_call);
 
-                if func_call.name == "true" {
-                    self.basm_push_inst(&BasmInstruction::PUSH, 1);
-                }
-                else if func_call.name == "false" {
-                    self.basm_push_inst(&BasmInstruction::PUSH, 0);
-                } else {
+                // if func_call.name == "true" {
+                //     self.basm_push_inst(&BasmInstruction::PUSH, 1);
+                // }
+                // else if func_call.name == "false" {
+                //     self.basm_push_inst(&BasmInstruction::PUSH, 0);
+                // } else 
+                {
                     let mut func_idx : i64 = -1;
                     if let Some(idx)= self.externals.get(&func_call.name) {
                         func_idx = *idx as i64;
@@ -188,6 +221,8 @@ impl<'a> BasmCompiler<'a> {
             AstExpr::LitString(literal) => {
                 // AF TODO remove quotes?
                 println!("AstExprKind::LitString: {}", literal);
+                expr_type = AstTypes::I64;
+
                 let (mem_loc, mem_len) = self.push_string_to_memory(literal);
         
                 self.basm_push_inst(&BasmInstruction::PUSH, mem_loc);
@@ -195,10 +230,14 @@ impl<'a> BasmCompiler<'a> {
             },
             AstExpr::LitFloat(_) => todo!(),
             AstExpr::LitInt(value) => {
+                expr_type = AstTypes::I64;
                 self.basm_push_inst(&BasmInstruction::PUSH, *value);
+           
             },
             AstExpr::LitChar(_) => todo!(),
             AstExpr::LitBool(value  ) => {
+                expr_type = AstTypes::I64;
+
                 if *value {
                     self.basm_push_inst(&BasmInstruction::PUSH, 1);
 
@@ -207,23 +246,33 @@ impl<'a> BasmCompiler<'a> {
                 }
             },
             AstExpr::VarRead( value  ) => {
-                self.compile_var_read(value);
+                expr_type = self.compile_var_read(value);
             },
 
             AstExpr::BinarayOp(value ) => {
-                self.compile_binary_op(value);
+                expr_type = self.compile_binary_op(value);
             },
+        }
+
+        CompiledExpr {
+            inst_addr,
+            expr_type,
         }
     }
 
-    fn compile_var_read(&mut self, var_read:&AstVarRead) {
+    fn compile_var_read(&mut self, var_read:&AstVarRead) -> AstTypes {
+
         println!("compile_var_read ");
-        if let Some( addr ) = self.global_vars.get( &var_read.name) {
-            let addr = addr.clone();
-            self.basm_push_inst(&BasmInstruction::PUSH, addr);
+        if let Some( global_var ) = self.global_vars.get( &var_read.name) {
+
+            let var_type = global_var.var_type;
+            let var_addr = global_var.var_addr;
+
+            self.basm_push_inst(&BasmInstruction::PUSH, var_addr as BMword);
             self.basm_push_inst(&BasmInstruction::READ64I, 0);
-            return
+            return var_type
         }
+
         let loc_msg = fmt_loc_err( self.filename_locations, &var_read.loc);
         user_error!("{} Can't read variable name {}",
             loc_msg,
@@ -234,7 +283,14 @@ impl<'a> BasmCompiler<'a> {
     fn compile_if_statment(&mut self, if_statement: &AstIfStatement) {
 
         println!("Compile if instruction condition ");
-        self.compile_expr(&if_statement.condition);
+        let compiled_cond = self.compile_expr(&if_statement.condition);
+
+        let loc_msg = fmt_loc_err( self.filename_locations, &if_statement.loc);
+        if compiled_cond.expr_type == AstTypes::VOID {
+            user_error!("{} condition can't be of type {:?} in the if-else statement",loc_msg, compiled_cond.expr_type);
+        }  
+
+
         self.basm_push_inst(&BasmInstruction::NOT, 0);
         let jmp_no_if_op = self.basm_push_inst(&BasmInstruction::JMPIf, 0) + 1;
         println!("######### jmp_not_if_addr {} ",jmp_no_if_op);
@@ -249,22 +305,22 @@ impl<'a> BasmCompiler<'a> {
             let jmp_over_else = self.basm_push_inst(&BasmInstruction::JMP, 0) + 1;
             
             // fill in deferred address of no_if block
-            let jmp_addr = (self.program.len() / 2 )  as BMword;
+            let jmp_addr = self.get_inst_addr() as BMword;
             self.program[jmp_no_if_op] = jmp_addr;   
 
-            let jmp_addr = self.program.len() / 2;
+            let jmp_addr = self.get_inst_addr() as BMword;
             println!("######### body_else_addr {} ",jmp_addr);
     
             self.compile_block(&else_block);
 
             // fill in deferred address of jmp over else block
-            let jmp_addr = (self.program.len() / 2 )  as BMword;
+            let jmp_addr = self.get_inst_addr() as BMword;
             self.program[jmp_over_else] = jmp_addr;   
     
 
         } else {
             // fill in deferred address of no_if block
-            let jmp_addr = (self.program.len() / 2 )  as BMword;
+            let jmp_addr = self.get_inst_addr() as BMword;
             self.program[jmp_no_if_op] = jmp_addr;   
         }
     }
@@ -272,16 +328,20 @@ impl<'a> BasmCompiler<'a> {
     fn compile_while_statement(&mut self, while_statement: &AstWhileStatement) {
 
         println!("Compile while instruction condition ");
-        let start_while_addr = (self.program.len() / 2 )  as BMword;
+        let compiled_cond = self.compile_expr(&while_statement.condition);
 
-        self.compile_expr(&while_statement.condition);
+        let loc_msg = fmt_loc_err( self.filename_locations, &while_statement.loc);
+        if compiled_cond.expr_type == AstTypes::VOID {
+            user_error!("{} condition can't be of type {:?} in the while statement",loc_msg, compiled_cond.expr_type);
+        }  
+
         self.basm_push_inst(&BasmInstruction::NOT, 0);
         let end_while_jmp = self.basm_push_inst(&BasmInstruction::JMPIf, 0) + 1;
 
         self.compile_block(&while_statement.block);
 
-        self.basm_push_inst(&BasmInstruction::JMP, start_while_addr);
-        let end_while_addr = (self.program.len() / 2 )  as BMword;
+        self.basm_push_inst(&BasmInstruction::JMP, compiled_cond.inst_addr as BMword);
+        let end_while_addr = self.get_inst_addr() as BMword;
 
         self.program[end_while_jmp] = end_while_addr; 
 
@@ -291,9 +351,10 @@ impl<'a> BasmCompiler<'a> {
     fn compile_var_assign(&mut self, var_assign :&AstVarAssign ) {
 
         println!("compile_var_assign ");
-        if let Some( addr ) = self.global_vars.get( &var_assign.name) {
-            let addr = addr.clone();
-            self.basm_push_inst(&BasmInstruction::PUSH, addr);
+        if let Some( global_var ) = self.global_vars.get( &var_assign.name) {
+
+            let var_addr = global_var.var_addr as BMword;
+            self.basm_push_inst(&BasmInstruction::PUSH, var_addr);
 
             self.compile_expr(&var_assign.expr);
             self.basm_push_inst(&BasmInstruction::WRITE64, 0);
@@ -310,16 +371,19 @@ impl<'a> BasmCompiler<'a> {
         println!("compile_statement: {:?}", &stmt);
         match &stmt {
             AstStatement::Expr(expr) => {
-                self.compile_expr(&expr)
+                self.compile_expr(&expr);
+
+                // drop expression result if needed
+                //self.basm_push_inst(&BasmInstruction::DROP, 0);
             },
             AstStatement::If(if_statement) => {
                 self.compile_if_statment( &if_statement);
             }
             AstStatement::VarAssign(var_assign) => {
-                self.compile_var_assign(var_assign)
+                self.compile_var_assign(var_assign);
             },
             AstStatement::While(while_stmt) => {
-                self.compile_while_statement(while_stmt)
+                self.compile_while_statement(while_stmt);
             },
         }
     }
@@ -333,54 +397,63 @@ impl<'a> BasmCompiler<'a> {
         }
     }
 
-    fn compile_proc_def(&mut self, proc_def :&AstProcDef ) {
+    fn get_inst_addr(&self) -> BMaddr {
+        self.program.len() /2
+    }
+
+    fn compile_proc_def(&mut self, proc_def :&AstProcDef ) -> BMaddr {
 
         println!("compile_proc_def ");
+        let addr = self.get_inst_addr();
         let body = &proc_def.body;
         self.compile_block( &body );
+        addr
 
     }
 
-    fn compile_var_def(&mut self, var_def :&AstVarDef ) {
+    fn compile_var_def(&mut self, var_def :&AstVarDef ){
 
         println!("compile_var_def ");
 
         match &var_def.var_type {
             AstTypes::I64 => {
                 let bt_array = vec![0,0,0,0,0,0,0,0 as u8];
-                let (addr, _) = self.push_buffer_to_memory(&bt_array);                
-                println!("$$$$$$$$$$$$$$ GLOBAL VAR {} at ADDR {}", &var_def.name, &addr);
+                let (addr, _) = self.push_buffer_to_memory(&bt_array);
+                let var_addr = addr as BMaddr;
+                let var_type = var_def.var_type;
+
+                println!("$$$$$$$$$$$$$$ GLOBAL VAR {} at ADDR {}", &var_def.name, &var_addr);
 
                 // TODO DOES NOT CHECK IF VAR EXIST
-                self.global_vars.insert(var_def.name.clone(), addr);
+                self.global_vars.insert(var_def.name.clone(), GlobalVar {
+                    var_addr,
+                    var_type,
+                });
             },
+            AstTypes::VOID => {
+                let loc_msg = fmt_loc_err( self.filename_locations, &var_def.loc);
+                    user_error!("{} definining variables with type void is not allowed",
+                    loc_msg);               },        
         }
     }
 
-
-
     pub fn compile(&mut self, module :&AstModule ) {
+
         // insert native write function
         self.push_external_native( "write".to_string() );
 
-        // TEMP X FOR TESTING
-        // let bt_array = vec![0,0,0,0 as u8];
-        // let (x_addr, _) = self.push_buffer_to_memory(&bt_array);
-        // self.x_addr = x_addr;
-
         for top in &module.tops {
             match top {
-                AstTop::ProcDef( proc_def) => self.compile_proc_def(&proc_def),
-                AstTop::VarDef( var_def ) => self.compile_var_def(&var_def),
+                AstTop::ProcDef( proc_def) => {
+                    let _addr = self.compile_proc_def(&proc_def);
+
+                } ,
+                AstTop::VarDef( var_def ) => {
+                    self.compile_var_def(&var_def);
+                }
             }
         }
 
-        // let (mem_loc, mem_len) = self.push_string_to_memory("Hello, World!");
-        // println!("Memory size: {}", self.memory.len());
-
-        // self.basm_push_inst(&BasmInstruction::PUSH, mem_loc);
-        // self.basm_push_inst(&BasmInstruction::PUSH, mem_len);
-        // self.basm_push_inst(&BasmInstruction::NATIVE, write_loc);
         self.basm_push_inst(&BasmInstruction::HALT, 0);
 
     }
