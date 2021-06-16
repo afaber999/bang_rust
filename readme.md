@@ -1,3 +1,13 @@
+# BANG compiler in Rust
 
-to run from shell
-use cargo run -- args
+This is my attempt to write a compiler Bang compiler in Rust (for more information about the Bang lanuage and Basm see 
+https://www.youtube.com/channel/UCrqM0Ym_NbK1fqeQG2VIohg ).
+It is just a toy project to learn more acquinted with the Rust programming language.
+
+
+
+
+
+
+
+
