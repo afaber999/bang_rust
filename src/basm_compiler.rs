@@ -415,9 +415,7 @@ impl<'a> BasmCompiler<'a> {
         let loc = proc_def.loc;
 
         let body = &proc_def.body;
-        self.compile_block( &body );
-        self.basm_push_inst(&BasmInstruction::RET, 0);
-        
+
         // check if name already exist
         if let Some( existing_proc) = self.procedures.get(&name) {
             let loc_msg = fmt_loc_err( self.filename_locations, &proc_def.loc);
@@ -427,10 +425,15 @@ impl<'a> BasmCompiler<'a> {
                 fmt_loc(self.filename_locations, &existing_proc.loc));
         }
 
+        // insert before the block, so we can do recursion!
         self.procedures.insert(name, CompiledProc {
             loc,
             inst_addr,
         });
+
+        self.compile_block( &body );
+        self.basm_push_inst(&BasmInstruction::RET, 0);
+        
     }
 
 
