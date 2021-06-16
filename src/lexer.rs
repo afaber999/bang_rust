@@ -154,7 +154,7 @@ impl<'a> Lexer<'a> {
     }
 
     pub fn get_string(&self,  text_start:usize, text_len:usize) -> String {
-        self.content[text_start..text_start+text_len].into_iter().collect()
+        self.content[text_start..text_start+text_len].iter().collect()
     }
     pub fn get_char(&mut self,  index:usize) -> char {
         self.content[index]
@@ -300,11 +300,9 @@ impl<'a> Lexer<'a> {
     }
 
 
-    pub fn next(&mut self) -> Option<Token>{
+    pub fn extract_next(&mut self) -> Option<Token>{
         self.refill_peek_buffer();
-        let token = self.peek_buffer.pop_front();
-        //println!("LEXER ====== NEXT TOKEN {:?}", &token);
-        token
+        self.peek_buffer.pop_front()
     }
 
 
@@ -315,7 +313,7 @@ impl<'a> Lexer<'a> {
             return false
         }
         let token_name = self.get_string( token.text_start, token.text_len );
-        return token_name == keyword
+        token_name == keyword
     }
 
     pub fn expect_keyword(&mut self, name: &str) -> Token {
@@ -333,7 +331,7 @@ impl<'a> Lexer<'a> {
 
     pub fn expect_token_next(&mut self, token_kind : TokenKind) -> Token {
 
-        if let Some( token ) = self.next() {
+        if let Some( token ) = self.extract_next() {
             if token.token_kind != token_kind {
                 let loc_msg = fmt_loc_err( self.filename_locations, &token.loc);
                 user_error!("{} Expected token {} but got {}",

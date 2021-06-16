@@ -40,7 +40,7 @@ fn main() -> Result<()> {
 
     let filename_locations = FileNameLocations::new();
 
-    let mut arg_it = env::args().into_iter();
+    let mut arg_it = env::args();
     let program_name = arg_it.next().expect("first argument");
     let mut input_file_path = PathBuf::default();
     let mut output_file_path = PathBuf::default();

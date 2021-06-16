@@ -198,7 +198,7 @@ impl<'a> Parser<'a> {
         let name = self.lexer.get_string(token.text_start, token.text_len);
 
         let args = self.parse_func_call_args();
-        return AstFunCall { name, args, loc : token.loc };
+        AstFunCall { name, args, loc : token.loc }
 
         // AF REMOVE
         // if name =="write" {
@@ -214,7 +214,7 @@ impl<'a> Parser<'a> {
         println!("---------- PARSE VAR READ ");
         let token = self.lexer.expect_token_next(TokenKind::Name);
         let name = self.lexer.get_string(token.text_start, token.text_len);
-        return AstVarRead { name, loc : token.loc };
+        AstVarRead { name, loc : token.loc }
     }
  
     fn parse_primary_expr(&mut self) -> AstExpr {
@@ -234,11 +234,11 @@ impl<'a> Parser<'a> {
                 TokenKind::Name => {
                     match name.as_str() {
                         "true" => {
-                            self.lexer.next();
+                            self.lexer.extract_next();
                             AstExpr::LitBool(true)
                         },
                         "false" => {
-                            self.lexer.next();
+                            self.lexer.extract_next();
                             AstExpr::LitBool(false)
                         },
                         _ =>  {
@@ -256,7 +256,7 @@ impl<'a> Parser<'a> {
                     }
                 },
                 TokenKind::Number => {
-                    let _ = self.lexer.next();
+                    let _ = self.lexer.extract_next();
 
                     if let Ok(ivalue) = name.parse::<i64>() {
                         return AstExpr::LitInt(ivalue)
@@ -305,7 +305,7 @@ impl<'a> Parser<'a> {
             match &token.token_kind {
                 // groep binary operators?
                 TokenKind::Plus => {
-                    self.lexer.next();
+                    self.lexer.extract_next();
                     let rhs = self.parse_expr();
                     return AstExpr::BinarayOp( AstBinaryOp {
                         loc : token.loc,
@@ -315,7 +315,7 @@ impl<'a> Parser<'a> {
                     })
                 },
                 TokenKind::Less=> {
-                    self.lexer.next();
+                    self.lexer.extract_next();
                     let rhs = self.parse_expr();
                     return AstExpr::BinarayOp( AstBinaryOp {
                         loc : token.loc,
@@ -338,7 +338,7 @@ impl<'a> Parser<'a> {
                 },
             }
         }
-        return lhs;
+        lhs
     }
 
     fn parse_if(&mut self) ->AstStatement {
@@ -355,7 +355,7 @@ impl<'a> Parser<'a> {
 
         if let Some( token ) = self.lexer.peek(0) {
             if self.lexer.is_keyword(&token, "else") {
-                self.lexer.next();
+                self.lexer.extract_next();
                 println!("ELSE block");
                 else_block = Some( Box::new( self.parse_curly_block())); 
                 println!("END ELSE block");
@@ -484,12 +484,11 @@ impl<'a> Parser<'a> {
 
         let body = self.parse_curly_block();
 
-        let result = AstProcDef{ 
+        AstProcDef{ 
             loc,
             name,
             body,
-        };
-        result
+        }
     }
 
     fn parse_type(&mut self) -> AstTypes {

@@ -71,10 +71,9 @@ impl<'a> BasmCompiler<'a> {
         idx as BMword
     }
 
-    fn push_buffer_to_memory(&mut self, value : &Vec<u8>) -> (BMword, BMword)
+    fn push_buffer_to_memory(&mut self, value : &[u8]) -> (BMword, BMword)
     {
         let idx = self.memory.len();
-
         for bt in value {
             self.memory.push( *bt );
         }
@@ -114,30 +113,30 @@ impl<'a> BasmCompiler<'a> {
 
         let mut file = File::create(file_path).unwrap();
 
-        file.write(&BM_FILE_MAGIC.to_ne_bytes()).expect("write");
-        file.write(&BM_FILE_VERSION.to_ne_bytes()).expect("write");
+        let _ = file.write(&BM_FILE_MAGIC.to_ne_bytes()).expect("write");
+        let _ = file.write(&BM_FILE_VERSION.to_ne_bytes()).expect("write");
 
         // number of INSTRUCTIONS
         let val  = self.get_inst_addr();
-        file.write(&val.to_ne_bytes()).expect("write");
+        let _ = file.write(&val.to_ne_bytes()).expect("write");
 
         let val  = self.entry as u64;
-        file.write(&val.to_ne_bytes()).expect("write");
+        let _ = file.write(&val.to_ne_bytes()).expect("write");
 
         let val  = self.memory.len() as u64;
-        file.write(&val.to_ne_bytes()).expect("write");
+        let _ = file.write(&val.to_ne_bytes()).expect("write");
 
         let val  = self.memory.len() as u64;
-        file.write(&val.to_ne_bytes()).expect("write");
+        let _ = file.write(&val.to_ne_bytes()).expect("write");
 
         let val  = self.externals.len() as u64;
-        file.write(&val.to_ne_bytes()).expect("write");
+        let _ = file.write(&val.to_ne_bytes()).expect("write");
 
         for x in &self.program {
-            file.write(&x.to_ne_bytes()).expect("write");
+            let _ = file.write(&x.to_ne_bytes()).expect("write");
         } 
 
-        file.write(&self.memory).expect("write");
+        let _ = file.write(&self.memory).expect("write");
 
         // each external native name is a fixed length string
         // with a maximum of 256 characters
@@ -147,7 +146,7 @@ impl<'a> BasmCompiler<'a> {
                 let val = if let Some(ch) = chit.next() {
                     ch as u8
                 } else {0};
-                file.write(&val.to_ne_bytes()).expect("write");
+                let _ = file.write(&val.to_ne_bytes()).expect("write");
             }
         }
 
@@ -210,17 +209,15 @@ impl<'a> BasmCompiler<'a> {
                     println!("FUNC IDX : {:?}", func_idx);
                     // do function call
                     self.basm_push_inst(&BasmInstruction::NATIVE, func_idx);                    
-                } else {
-                    if let Some(compiled_proc)= self.procedures.get(&func_call.name) {
-                        let proc_addr = compiled_proc.addr as BMword;
-                        self.basm_push_inst(&BasmInstruction::CALL,proc_addr);
+                } else if let Some(compiled_proc)= self.procedures.get(&func_call.name) {
+                    let proc_addr = compiled_proc.addr as BMword;
+                    self.basm_push_inst(&BasmInstruction::CALL,proc_addr);
 
-                    } else {
-                        let loc_msg = fmt_loc_err( self.filename_locations, &func_call.loc);
-                        user_error!("{} Can't find definition for function name  {}",
-                            loc_msg,
-                            &func_call.name);
-                    }
+                } else {
+                    let loc_msg = fmt_loc_err( self.filename_locations, &func_call.loc);
+                    user_error!("{} Can't find definition for function name  {}",
+                        loc_msg,
+                        &func_call.name);
                 }    
             },
             AstExpr::LitString(literal) => {
@@ -459,7 +456,7 @@ impl<'a> BasmCompiler<'a> {
                     loc_msg);
             },        
             AstTypes::I64 => {
-                let bt_array = vec![0,0,0,0,0,0,0,0 as u8];
+                let bt_array = vec![0,0,0,0,0,0,0,0_u8];
                 let (addr, _) = self.push_buffer_to_memory(&bt_array);
                 let addr = addr as BMaddr;
 
@@ -470,7 +467,7 @@ impl<'a> BasmCompiler<'a> {
                 });
             },
             AstTypes::BOOL => {
-                let bt_array = vec![0,0,0,0,0,0,0,0 as u8];
+                let bt_array = vec![0,0,0,0,0,0,0,0_u8];
                 let (addr, _) = self.push_buffer_to_memory(&bt_array);
                 let addr = addr as BMaddr;
 
@@ -481,7 +478,7 @@ impl<'a> BasmCompiler<'a> {
                 });
             },             
             AstTypes::PTR => {
-                let bt_array = vec![0,0,0,0,0,0,0,0 as u8];
+                let bt_array = vec![0,0,0,0,0,0,0,0_u8];
                 let (addr, _) = self.push_buffer_to_memory(&bt_array);
                 let addr = addr as BMaddr;
 
