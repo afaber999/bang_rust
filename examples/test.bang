@@ -2,7 +2,10 @@ var x: i64;
 var p: ptr;
 
 proc main() {
+  
+  x = 69;
   p = ptr(x);
-  p;
+  load_ptr(i64, p );
+  store_ptr(i64, p, 79);
   # write("End\n");
 }

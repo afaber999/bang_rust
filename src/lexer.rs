@@ -216,6 +216,7 @@ impl<'a> Lexer<'a> {
         hardcoded_tokens.insert("=", TokenKind::Equals );
         hardcoded_tokens.insert("+", TokenKind::Plus );
         hardcoded_tokens.insert("<", TokenKind::Less );
+        hardcoded_tokens.insert(",", TokenKind::Comma );
 
         for (token_text, token_kind) in hardcoded_tokens.iter() {
             if self.starts_with( &token_text ) {

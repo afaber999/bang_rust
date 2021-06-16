@@ -124,7 +124,36 @@ pub fn expr_kind_to_name(expr : &AstExpr) -> &'static str {
     }
 }
 
+pub fn name_to_type( type_name : &str)  -> Option<AstTypes>{
 
+    match type_name {
+        "void" => {
+            Some( AstTypes::VOID )
+        },
+        "i64" => {
+            Some( AstTypes::I64 )
+        },
+        "bool" => {
+            Some( AstTypes::BOOL )
+        },
+        "ptr" => {
+            Some( AstTypes::PTR )
+        },
+        _ => {
+            None
+        }
+    }
+}
+
+pub fn type_to_str( type_kind : &AstTypes)  -> &'static str {
+
+    match type_kind {
+        AstTypes::VOID => "void",
+        AstTypes::I64 => "i64",
+        AstTypes::BOOL => "bool",
+        AstTypes::PTR => "ptr",
+    }
+}
 
 
 #[derive(Debug)]
@@ -198,10 +227,22 @@ impl<'a> Parser<'a> {
 
         if let Some( next_token ) = self.lexer.peek(0) {
             if  next_token.token_kind != TokenKind::CloseParen {
-                let firstarg_expr = self.parse_expr();
-                args_expr.push(firstarg_expr);
+                let arg_expr = self.parse_expr();
+                args_expr.push(arg_expr);
             }
         }
+
+        while let Some( next_token ) = self.lexer.peek(0) {
+            if  next_token.token_kind != TokenKind::Comma {
+                break;
+            }
+            // consume comma token
+            self.lexer.expect_token_next(TokenKind::Comma);
+            let arg_expr = self.parse_expr();
+            args_expr.push(arg_expr);
+        }
+
+        // expect close paren
         self.lexer.expect_token_next(TokenKind::CloseParen);
 
         args_expr
@@ -277,6 +318,7 @@ impl<'a> Parser<'a> {
                     let literal = self.parse_string_literal();
                      AstExpr::LitString(literal)
                 },
+                TokenKind::Comma        |
                 TokenKind::Colon        |
                 TokenKind::Equals       |
                 TokenKind::OpenParen    |
@@ -341,6 +383,7 @@ impl<'a> Parser<'a> {
                 TokenKind::Semicolon  |
                 TokenKind::Literal    |
                 TokenKind::Colon      |
+                TokenKind::Comma      |
                 TokenKind::Equals => {
                     // fallthrough
                 },
@@ -431,6 +474,7 @@ impl<'a> Parser<'a> {
                 TokenKind::Equals |
                 TokenKind::Plus |
                 TokenKind::Less |
+                TokenKind::Comma |
                 TokenKind::Semicolon  => {
                     // fallthrough, parse as an expression with a semicolon
                 }
@@ -506,33 +550,16 @@ impl<'a> Parser<'a> {
         let token = self.lexer.expect_token_next(TokenKind::Name);
         let type_name = self.lexer.get_string(token.text_start, token.text_len);
         println!("VAR TYPE NAME IS: {} ", type_name);
-        
-        match type_name.as_str() {
-
-            "void" => {
-                AstTypes::VOID
-            },
-            "i64" => {
-                AstTypes::I64
-            },
-            "bool" => {
-                AstTypes::BOOL
-            },
-            "ptr" => {
-                AstTypes::PTR
-            },
-            type_name => {
-                // the code below currently expects 1 type
-                // force compiler error when adding new variant 
-                sa::const_assert!(AstTypes::VARIANT_COUNT ==  4);
-            
-                let loc_msg = fmt_loc_err( 
-                    self.filename_locations, 
-                    &self.lexer.get_location());
-
-                user_error!("{} unknown file type {}", loc_msg, &type_name);
-            }
+               
+        if let Some( type_kind ) = name_to_type( type_name.as_str() ) {
+            return type_kind;
         }
+    
+        let loc_msg = fmt_loc_err( 
+            self.filename_locations, 
+            &self.lexer.get_location());
+
+        user_error!("{} unknown file type {}", loc_msg, &type_name);
     }
 
 

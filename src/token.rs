@@ -15,6 +15,7 @@ pub enum TokenKind {
     Equals,
     Plus,
     Less,
+    Comma,
 }
 
 
@@ -32,6 +33,7 @@ pub fn token_kind_name(token_kind : TokenKind ) -> &'static str {
         TokenKind::Equals => "=",
         TokenKind::Plus => "+",
         TokenKind::Less => "<",
+        TokenKind::Comma => ",",
     }
 }
 

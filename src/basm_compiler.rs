@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::{Path};
 use crate::location::{FileNameLocations, Location, fmt_loc, fmt_loc_err};
-use crate::parser::{AstBinaryOp, AstBlock, AstExpr, AstFunCall, AstIfStatement, AstModule, AstProcDef, AstStatement, AstTop, AstTypes, AstVarAssign, AstVarDef, AstVarRead, AstWhileStatement, expr_kind_to_name};
+use crate::parser::{AstBinaryOp, AstBlock, AstExpr, AstFunCall, AstIfStatement, AstModule, AstProcDef, AstStatement, AstTop, AstTypes, AstVarAssign, AstVarDef, AstVarRead, AstWhileStatement, name_to_type, type_to_str};
 use crate::basm_instructions::{BasmInstruction, basm_instruction_opcode};
 
 use std::fs::File;
@@ -212,28 +212,16 @@ impl<'a> BasmCompiler<'a> {
 
                 } else if  func_call.name == "ptr" {
 
-                    self.check_function_arity(&func_call, 1);
-                    let arg = &func_call.args[0];
-                    if let AstExpr::VarRead( var_read ) = arg {
+                    expr_type = self.compile_ptr(func_call);
 
-                        if let Some( global_var ) = self.global_vars.get( &var_read.name) {
+                } else if  func_call.name == "load_ptr" {
 
-                            let var_type = global_var.def.var_type;
-                            let var_addr = global_var.addr;
-                
-                            self.basm_push_inst(&BasmInstruction::PUSH, var_addr as BMword);
-                            expr_type = AstTypes::PTR;
-                        } else {
-                            let loc_msg = fmt_loc_err( self.filename_locations, &var_read.loc);
-                            user_error!("{} Can't read variable name {}",
-                                loc_msg,
-                                &var_read.name); 
-                        }
-                    } else {
-                        let loc_msg = fmt_loc_err( self.filename_locations, &func_call.loc);
-                        user_error!("{} Expected variable name of the argument of the ptr function", loc_msg );
-                    }
-                     
+                    expr_type = self.compile_load_ptr(func_call);
+
+                } else if  func_call.name == "store_ptr" {
+
+                    expr_type = self.compile_store_ptr(func_call);
+
                 } else if let Some(compiled_proc)= self.procedures.get(&func_call.name) {
                     let proc_addr = compiled_proc.addr as BMword;
                     self.basm_push_inst(&BasmInstruction::CALL,proc_addr);
@@ -287,6 +275,122 @@ impl<'a> BasmCompiler<'a> {
         }
     }
 
+    fn compile_ptr(&mut self, func_call: &AstFunCall) -> AstTypes{
+
+        self.check_function_arity(&func_call, 1);
+        let arg = &func_call.args[0];
+        if let AstExpr::VarRead( var_read ) = arg {
+
+            if let Some( global_var ) = self.global_vars.get( &var_read.name) {
+
+                let var_addr = global_var.addr;
+    
+                self.basm_push_inst(&BasmInstruction::PUSH, var_addr as BMword);
+                AstTypes::PTR
+                
+            } else {
+                let loc_msg = fmt_loc_err( self.filename_locations, &var_read.loc);
+                user_error!("{} Can't read variable name {}",
+                    loc_msg,
+                    &var_read.name); 
+            }
+        } else {
+            let loc_msg = fmt_loc_err( self.filename_locations, &func_call.loc);
+            user_error!("{} Expected variable name of the argument of the ptr function", loc_msg );
+        }
+    }
+
+
+    fn reinterpret_expr_as_type(&mut self, type_arg: &AstExpr, loc : &Location ) -> AstTypes {
+
+        if let AstExpr::VarRead( var_read_type ) = type_arg {
+
+            if let Some( ptr_type ) = name_to_type(&var_read_type.name) {
+                return ptr_type
+            }
+
+            let loc_msg = fmt_loc_err( self.filename_locations, &var_read_type.loc);
+            user_error!("{} is not a valid type {}", loc_msg,  &var_read_type.name);
+        }
+        let loc_msg = fmt_loc_err( self.filename_locations, loc);
+        user_error!("{} Expected type name", loc_msg );
+    }
+
+
+    fn expect_compiled_expr_to_be_type(&self, compiled_expr: &CompiledExpr, exp_type : &AstTypes, loc : &Location ) {
+
+        if compiled_expr.expr_type == *exp_type {
+            return;
+        }
+        let loc_msg = fmt_loc_err( self.filename_locations, &loc);
+        user_error!("{} expected type {} but got type {}", 
+            loc_msg, 
+            type_to_str( &exp_type),
+            type_to_str( &compiled_expr.expr_type) );
+    }
+
+
+    fn compile_load_ptr(&mut self, func_call: &AstFunCall) -> AstTypes{
+
+        self.check_function_arity(&func_call, 2);
+
+        let arg0 = &func_call.args[0];
+        let arg1 = &func_call.args[1];
+
+        let ptr_type = self.reinterpret_expr_as_type( arg0,&func_call.loc);
+
+        let compiled_ptr_arg= self.compile_expr( arg1 );
+        self.expect_compiled_expr_to_be_type(&compiled_ptr_arg, &AstTypes::PTR, &func_call.loc);
+
+        match ptr_type {
+            AstTypes::I64 => {
+                self.basm_push_inst(&BasmInstruction::READ64I, 0);
+            },
+            AstTypes::BOOL|
+            AstTypes::PTR => {
+                self.basm_push_inst(&BasmInstruction::READ64U, 0);                        
+            },
+            AstTypes::VOID => {
+                let loc_msg = fmt_loc_err( self.filename_locations, &func_call.loc);
+                user_error!("{} can't load {} type", loc_msg, type_to_str( &ptr_type));
+            },
+        }
+        compiled_ptr_arg.expr_type
+    }
+
+
+    fn compile_store_ptr(&mut self, func_call: &AstFunCall) -> AstTypes{
+
+        self.check_function_arity(&func_call, 3);
+
+        let arg0 = &func_call.args[0];
+        let arg1 = &func_call.args[1];
+        let arg2 = &func_call.args[2];
+
+        let ptr_type = self.reinterpret_expr_as_type( arg0,&func_call.loc);
+        
+        let ptr= self.compile_expr( arg1 );
+        self.expect_compiled_expr_to_be_type(&ptr, &AstTypes::PTR, &func_call.loc);
+
+        let val= self.compile_expr( arg2 );
+        self.expect_compiled_expr_to_be_type(&val, &ptr_type, &func_call.loc);
+
+        match ptr_type {
+            AstTypes::BOOL|
+            AstTypes::PTR |
+            AstTypes::I64 => {
+                self.basm_push_inst(&BasmInstruction::WRITE64, 0);
+            },
+            AstTypes::VOID => {
+                let loc_msg = fmt_loc_err( self.filename_locations, &func_call.loc);
+                user_error!("{} can't store {} type", loc_msg, type_to_str( &ptr_type));
+            },
+        }
+
+        // result of store is void
+        AstTypes::VOID
+    }
+ 
     fn compile_var_read(&mut self, var_read:&AstVarRead) -> AstTypes {
 
         println!("compile_var_read ");
