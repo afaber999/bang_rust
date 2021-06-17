@@ -302,16 +302,16 @@ impl<'a> BasmCompiler<'a> {
         user_error!("{} Expected type name", loc_msg);
     }
 
-    fn type_check_expr(&self, expr: &CompiledExpr, expected_type: AstTypes) {
-        if expr.expr_type == expected_type {
+    fn type_check_expr(&self, compiled_expr: &CompiledExpr, expected_type: AstTypes) {
+        if compiled_expr.expr_type == expected_type {
             return;
         }
-        let loc_msg = fmt_loc_err(self.filename_locations, &expr.loc);
+        let loc_msg = fmt_loc_err(self.filename_locations, &compiled_expr.loc);
         user_error!(
             "{} expected type {} but got type {}",
             loc_msg,
             type_to_str(expected_type),
-            type_to_str(expr.expr_type)
+            type_to_str(compiled_expr.expr_type)
         );
     }
 
@@ -605,6 +605,35 @@ impl<'a> BasmCompiler<'a> {
         }
     }
 
+    fn generate_heap_base(&mut self, heap_base_name : &str ) {
+        if let Some(var ) = self.global_vars.get(heap_base_name) {
+            if var.def.var_type != AstTypes::PTR {
+                let loc_msg = fmt_loc_err(self.filename_locations, &var.def.loc);
+                user_error!(
+                    "{} Heap base variable named {} needs to be of type  type {} but got type {}",
+                    loc_msg,
+                    &heap_base_name,
+                    type_to_str(AstTypes::PTR),
+                    type_to_str(var.def.var_type)
+                );                
+            }
+
+            // end of memory location into heap_base variable address
+            let addr_bts = self.memory.len().to_ne_bytes();
+            self.memory[ var.addr .. var.addr + addr_bts.len()].clone_from_slice(&addr_bts);
+            println!("MEMORY AFTER HEA");
+            // let mut dst_idx = var.addr;
+
+            // for bt in addr_bts {
+            //     self.memory[ dst_idx ] = bt;
+            //     dst_idx += 1;
+            // }
+        } else {
+            println!( "HEAP BASE NOT FOUND!!!");
+        }
+    }
+
+
     fn generate_entry_point(&mut self, entry_name: &str) {
         if let Some(entry_proc) = self.procedures.get(entry_name) {
             // set entry point to this startup code
@@ -640,6 +669,7 @@ impl<'a> BasmCompiler<'a> {
             }
         }
 
+        self.generate_heap_base("heap_base");
         self.generate_entry_point(entry_name);
     }
 }
