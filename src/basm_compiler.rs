@@ -621,15 +621,6 @@ impl<'a> BasmCompiler<'a> {
             // end of memory location into heap_base variable address
             let addr_bts = self.memory.len().to_ne_bytes();
             self.memory[ var.addr .. var.addr + addr_bts.len()].clone_from_slice(&addr_bts);
-            println!("MEMORY AFTER HEA");
-            // let mut dst_idx = var.addr;
-
-            // for bt in addr_bts {
-            //     self.memory[ dst_idx ] = bt;
-            //     dst_idx += 1;
-            // }
-        } else {
-            println!( "HEAP BASE NOT FOUND!!!");
         }
     }
 
