@@ -1,21 +1,32 @@
-use anyhow::{Result};
+
+//#![allow(clippy::clippy::shadow_unrelated)]
+
+
+#![warn(clippy::pedantic)]
+#![allow(clippy::non_ascii_literal)]
+#![allow(clippy::shadow_unrelated)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::clippy::missing_panics_doc)]
+
+//#![warn(missing_docs)]
+
+use anyhow::Result;
 use std::{convert::From, env, panic, path::PathBuf};
 
 #[macro_use]
 pub mod errors;
 
-
+pub mod basm_compiler;
+pub mod basm_instructions;
 pub mod lexer;
 pub mod location;
 pub mod parser;
 pub mod token;
-pub mod basm_compiler;
-pub mod basm_instructions;
 
+use basm_compiler::BasmCompiler;
 use lexer::Lexer;
 use location::FileNameLocations;
 use parser::Parser;
-use basm_compiler::BasmCompiler;
 
 fn usage(program_name: &str) {
     println!("Usage: {} [OPTIONS] <input.bang>", program_name);
@@ -24,15 +35,12 @@ fn usage(program_name: &str) {
     println!("    -h                                Print this help to stdout");
 }
 
-
 fn main() -> Result<()> {
     panic::set_hook(Box::new(|panic_info| {
-        
         if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
             let msg = s.to_string();
             eprintln!("{:?}", msg);
         } else {
-
             eprintln!("{}", &panic_info);
         }
         std::process::exit(-1);
@@ -50,13 +58,12 @@ fn main() -> Result<()> {
             "-o" => {
                 if let Some(name) = arg_it.next() {
                     output_file_path = PathBuf::from(name);
-                }
-                else {
+                } else {
                     usage(&program_name);
                     eprintln!("ERROR: no value is provided for flag -o ");
-                    return Ok(())
+                    return Ok(());
                 }
-            },
+            }
             "-h" => usage(&program_name),
             _ => input_file_path = PathBuf::from(arg),
         }
@@ -65,7 +72,7 @@ fn main() -> Result<()> {
     if input_file_path == PathBuf::default() {
         usage(&program_name);
         eprintln!("ERROR: no name for input file is ");
-        return Ok(())
+        return Ok(());
     }
 
     if output_file_path == PathBuf::default() {
@@ -78,7 +85,7 @@ fn main() -> Result<()> {
     let input_file_name = input_file_path.to_str().unwrap().to_string();
 
     let input_file = std::fs::read_to_string(input_file_path)?;
-    print!( "{}", input_file);
+    print!("{}", input_file);
     println!("----------------------------------------------");
     // for line in reader.lines() {
     //     println!("{}", line?);
@@ -90,11 +97,10 @@ fn main() -> Result<()> {
 
     let mut basm_compiler = BasmCompiler::new(&filename_locations);
 
-    basm_compiler.compile( &module, "main");
+    basm_compiler.compile(&module, "main");
     basm_compiler.write_to_bm(&output_file_path);
 
     //basm_compiler.save(&output_file_path);
-
 
     println!("Done");
     Ok(())

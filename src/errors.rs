@@ -1,4 +1,3 @@
-
 /// This is an implementation detail and *should not* be called directly!
 #[doc(hidden)]
 pub fn error_abort__(msg: &str) -> ! {
@@ -24,4 +23,3 @@ macro_rules! internal_error {
         }
     };
 }
-

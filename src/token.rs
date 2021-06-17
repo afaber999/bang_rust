@@ -2,7 +2,7 @@ use crate::location::Location;
 use enum_iterator::IntoEnumIterator;
 
 #[derive(Debug, Clone, Copy, IntoEnumIterator, PartialEq)]
-pub enum TokenKind {
+pub enum Kind {
     Name,
     Number,
     OpenParen,
@@ -18,35 +18,16 @@ pub enum TokenKind {
     Comma,
 }
 
-
-pub fn token_kind_name(token_kind : TokenKind ) -> &'static str {
-    match token_kind {
-        TokenKind::Name => "Name",
-        TokenKind::Number => "Number",
-        TokenKind::OpenParen => "OpenParen",
-        TokenKind::CloseParen => "CloseParen",
-        TokenKind::OpenCurly => "OpenCurly",
-        TokenKind::CloseCurly => "CloseCurly",
-        TokenKind::Semicolon => "Semicolon",
-        TokenKind::Literal => "Literal",
-        TokenKind::Colon => ":",
-        TokenKind::Equals => "=",
-        TokenKind::Plus => "+",
-        TokenKind::Less => "<",
-        TokenKind::Comma => ",",
-    }
-}
-
 #[derive(Debug, Clone, Copy)]
 pub struct Token {
-    pub token_kind : TokenKind,
-    pub text_start : usize,
-    pub text_len   : usize,
-    pub loc : Location,
+    pub token_kind: Kind,
+    pub text_start: usize,
+    pub text_len: usize,
+    pub loc: Location,
 }
 
 impl Token {
-    pub fn new( token_kind: TokenKind, text_start: usize, text_len: usize , loc: Location)->Self {
+    pub fn new(token_kind: Kind, text_start: usize, text_len: usize, loc: Location) -> Self {
         Self {
             token_kind,
             text_start,
@@ -54,5 +35,23 @@ impl Token {
             loc,
         }
     }
-}
 
+    #[must_use]
+    pub fn kind_name(token_kind: Kind) -> &'static str {
+        match token_kind {
+            Kind::Name => "Name",
+            Kind::Number => "Number",
+            Kind::OpenParen => "OpenParen",
+            Kind::CloseParen => "CloseParen",
+            Kind::OpenCurly => "OpenCurly",
+            Kind::CloseCurly => "CloseCurly",
+            Kind::Semicolon => "Semicolon",
+            Kind::Literal => "Literal",
+            Kind::Colon => ":",
+            Kind::Equals => "=",
+            Kind::Plus => "+",
+            Kind::Less => "<",
+            Kind::Comma => ",",
+        }
+    }    
+}

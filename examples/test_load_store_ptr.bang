@@ -6,6 +6,6 @@ proc main() {
   x = 69;
   p = ptr(x);
   load_ptr(i64, p );
-  store_ptr(i64, p, 89);
+  store_ptr(i64, p, 79);
   # write("End\n");
 }
