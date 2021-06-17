@@ -173,6 +173,24 @@ impl<'a> BasmCompiler<'a> {
 
                 self.basm_push_inst(BasmInstruction::PLUSI, 0);
             }
+            crate::parser::AstBinaryOpKind::Mult => {
+                if compiled_lhs.expr_type != AstTypes::I64 {
+                    user_error!(
+                        "{} is not supported for type {:?}",
+                        loc_msg,
+                        compiled_lhs.expr_type
+                    );
+                }
+                if compiled_rhs.expr_type != AstTypes::I64 {
+                    user_error!(
+                        "{} is not supported for type {:?}",
+                        loc_msg,
+                        compiled_rhs.expr_type
+                    );
+                }
+
+                self.basm_push_inst(BasmInstruction::MULTI, 0);
+            }
             crate::parser::AstBinaryOpKind::Less => {
                 self.basm_push_inst(BasmInstruction::LTI, 0);
             }

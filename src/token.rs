@@ -16,6 +16,7 @@ pub enum Kind {
     Plus,
     Less,
     Comma,
+    Mult,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -41,17 +42,18 @@ impl Token {
         match token_kind {
             Kind::Name => "Name",
             Kind::Number => "Number",
-            Kind::OpenParen => "OpenParen",
-            Kind::CloseParen => "CloseParen",
-            Kind::OpenCurly => "OpenCurly",
-            Kind::CloseCurly => "CloseCurly",
-            Kind::Semicolon => "Semicolon",
+            Kind::OpenParen => "(",
+            Kind::CloseParen => ")",
+            Kind::OpenCurly => "{",
+            Kind::CloseCurly => ";",
+            Kind::Semicolon => ";",
             Kind::Literal => "Literal",
             Kind::Colon => ":",
             Kind::Equals => "=",
             Kind::Plus => "+",
             Kind::Less => "<",
             Kind::Comma => ",",
+            Kind::Mult => "*",
         }
     }    
 }

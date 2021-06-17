@@ -47,6 +47,7 @@ pub struct AstVarRead {
 pub enum AstBinaryOpKind {
     Plus,
     Less,
+    Mult,
 }
 
 #[derive(Debug, Clone)]
@@ -343,6 +344,7 @@ impl<'a> Parser<'a> {
                 | Kind::OpenCurly
                 | Kind::CloseCurly
                 | Kind::Plus
+                | Kind::Mult
                 | Kind::Less
                 | Kind::Semicolon => {
                     let loc_msg = fmt_loc_err(self.filename_locations, &token.loc);
@@ -392,6 +394,23 @@ impl<'a> Parser<'a> {
                         kind,
                     };
                 }
+                Kind::Mult => {
+                    self.lexer.extract_next();
+                    let rhs = self.parse_expr();
+
+                    let kind = AstExprKind::BinarayOp(AstBinaryOp {
+                        loc: token.loc,
+                        kind: AstBinaryOpKind::Mult,
+                        lhs: Box::new(lhs),
+                        rhs: Box::new(rhs),
+                    });
+
+                    return AstExpr {
+                        loc: token.loc,
+                        kind,
+                    };
+                }
+
                 Kind::Less => {
                     self.lexer.extract_next();
                     let rhs = self.parse_expr();
@@ -500,6 +519,7 @@ impl<'a> Parser<'a> {
                 | Kind::Colon
                 | Kind::Equals
                 | Kind::Plus
+                | Kind::Mult
                 | Kind::Less
                 | Kind::Comma
                 | Kind::Semicolon => {

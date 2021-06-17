@@ -201,19 +201,21 @@ impl<'a> Lexer<'a> {
             break;
         }
 
-        let mut hardcoded_tokens = std::collections::HashMap::new();
-        hardcoded_tokens.insert("(", Kind::OpenParen);
-        hardcoded_tokens.insert(")", Kind::CloseParen);
-        hardcoded_tokens.insert("{", Kind::OpenCurly);
-        hardcoded_tokens.insert("}", Kind::CloseCurly);
-        hardcoded_tokens.insert(";", Kind::Semicolon);
-        hardcoded_tokens.insert(":", Kind::Colon);
-        hardcoded_tokens.insert("=", Kind::Equals);
-        hardcoded_tokens.insert("+", Kind::Plus);
-        hardcoded_tokens.insert("<", Kind::Less);
-        hardcoded_tokens.insert(",", Kind::Comma);
+        let hardcoded_tokens = [
+            ( "(", Kind::OpenParen),
+            ( ")", Kind::CloseParen),
+            ("{", Kind::OpenCurly),
+            ("}", Kind::CloseCurly),
+            (";", Kind::Semicolon),
+            (":", Kind::Colon),
+            ("=", Kind::Equals),
+            ("+", Kind::Plus),
+            ("<", Kind::Less),
+            (",", Kind::Comma),
+            ("*", Kind::Mult),
+        ];
 
-        for (token_text, token_kind) in hardcoded_tokens.iter() {
+        for (token_text, token_kind) in &hardcoded_tokens {
             if self.starts_with(&token_text) {
                 let opt_token = Some(self.extract_token(*token_kind, token_text.len()));
                 //println!( "NEXT TOKEN KIND: {:?}", &opt_token);
