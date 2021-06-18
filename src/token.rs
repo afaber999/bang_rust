@@ -20,6 +20,8 @@ pub enum Kind {
 }
 
 #[derive(Debug, Clone, Copy)]
+
+
 pub struct Token {
     pub token_kind: Kind,
     pub text_start: usize,
@@ -45,7 +47,7 @@ impl Token {
             Kind::OpenParen => "(",
             Kind::CloseParen => ")",
             Kind::OpenCurly => "{",
-            Kind::CloseCurly => ";",
+            Kind::CloseCurly => "}",
             Kind::Semicolon => ";",
             Kind::Literal => "Literal",
             Kind::Colon => ":",
@@ -55,5 +57,22 @@ impl Token {
             Kind::Comma => ",",
             Kind::Mult => "*",
         }
+    }
+    
+    pub fn get_symbol_tokens() -> &'static [Kind] {
+        &[
+            Kind::OpenParen,
+            Kind::CloseParen,
+            Kind::OpenCurly,
+            Kind::CloseCurly,
+            Kind::Semicolon,
+            Kind::Colon,
+            Kind::Equals,
+            Kind::Plus,
+            Kind::Less,
+            Kind::Comma,
+            Kind::Mult,       
+        ]
     }    
 }
+

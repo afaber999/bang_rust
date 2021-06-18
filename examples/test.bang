@@ -1,12 +1,6 @@
-var x: i64;
-var p: ptr;
+var i: i64;
 var heap_base : ptr;
 
 proc main() {
-  
-  x = 69;
-  p = ptr(x);
-  load_ptr(i64, p );
-  store_ptr(i64, p, 89);
-  # write("End\n");
+
 }

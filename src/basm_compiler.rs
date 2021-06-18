@@ -1,10 +1,6 @@
-use crate::basm_instructions::{basm_instruction_opcode, BasmInstruction};
+use crate::basm_instructions::{BasmInstruction, basm_instruction_opcode, map_binary_op_instructions};
 use crate::location::{fmt_loc, fmt_loc_err, FileNameLocations, Location};
-use crate::parser::{
-    name_to_type, type_to_str, AstBinaryOp, AstBlock, AstExpr, AstExprKind, AstFunCall,
-    AstIfStatement, AstModule, AstProcDef, AstStatement, AstTop, AstTypes, AstVarAssign, AstVarDef,
-    AstVarRead, AstWhileStatement,
-};
+use crate::parser::{AstBinaryOp, AstBlock, AstExpr, AstExprKind, AstFunCall, AstIfStatement, AstModule, AstProcDef, AstStatement, AstTop, AstTypes, AstVarAssign, AstVarDef, AstVarRead, AstWhileStatement, name_to_type, type_to_str};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -34,6 +30,20 @@ pub struct CompiledProc {
     pub def: AstProcDef,
     pub addr: BMaddr,
 }
+
+#[derive(Debug)]
+pub struct BinaryOpInstructions {
+    pub inp_type :AstTypes,
+    pub instr    :BasmInstruction,
+    pub ret_type :AstTypes,
+}
+
+impl BinaryOpInstructions {
+    pub fn new(inp_type :AstTypes, instr :BasmInstruction, ret_type :AstTypes ) -> Self {
+        Self {inp_type, instr, ret_type }
+    }
+}
+
 
 #[derive(Debug)]
 pub struct BasmCompiler<'a> {
@@ -148,54 +158,36 @@ impl<'a> BasmCompiler<'a> {
         drop(file);
     }
 
+
     fn compile_binary_op(&mut self, binary_op: &AstBinaryOp) -> AstTypes {
         let loc_msg = fmt_loc_err(self.filename_locations, &binary_op.loc);
 
         let compiled_lhs = self.compile_expr(binary_op.lhs.as_ref());
         let compiled_rhs = self.compile_expr(binary_op.rhs.as_ref());
 
-        match binary_op.kind {
-            crate::parser::AstBinaryOpKind::Plus => {
-                if compiled_lhs.expr_type != AstTypes::I64 {
-                    user_error!(
-                        "{} is not supported for type {:?}",
-                        loc_msg,
-                        compiled_lhs.expr_type
-                    );
-                }
-                if compiled_rhs.expr_type != AstTypes::I64 {
-                    user_error!(
-                        "{} is not supported for type {:?}",
-                        loc_msg,
-                        compiled_rhs.expr_type
-                    );
-                }
-
-                self.basm_push_inst(BasmInstruction::PLUSI, 0);
-            }
-            crate::parser::AstBinaryOpKind::Mult => {
-                if compiled_lhs.expr_type != AstTypes::I64 {
-                    user_error!(
-                        "{} is not supported for type {:?}",
-                        loc_msg,
-                        compiled_lhs.expr_type
-                    );
-                }
-                if compiled_rhs.expr_type != AstTypes::I64 {
-                    user_error!(
-                        "{} is not supported for type {:?}",
-                        loc_msg,
-                        compiled_rhs.expr_type
-                    );
-                }
-
-                self.basm_push_inst(BasmInstruction::MULTI, 0);
-            }
-            crate::parser::AstBinaryOpKind::Less => {
-                self.basm_push_inst(BasmInstruction::LTI, 0);
-            }
+        if compiled_lhs.expr_type != compiled_rhs.expr_type{
+            user_error!(
+                "{} binary operation {:?} not supported for LHS type {} with RHS type {}",
+                loc_msg,
+                binary_op.kind,
+                type_to_str( compiled_lhs.expr_type),
+                type_to_str( compiled_rhs.expr_type));
         }
-        AstTypes::I64
+
+        let bin_inst_opt = map_binary_op_instructions(compiled_lhs.expr_type,binary_op.kind);
+
+        if let Some( ( basm_inst, result_type ))  = bin_inst_opt {
+            self.basm_push_inst(basm_inst, 0);
+
+            // return result type
+            return result_type;
+        } 
+
+        user_error!(
+            "{} binary operation {:?} not available for type: {}",
+            loc_msg,
+            binary_op.kind,
+            type_to_str( compiled_lhs.expr_type));
     }
 
     fn compile_expr(&mut self, expr: &AstExpr) -> CompiledExpr {
@@ -226,6 +218,8 @@ impl<'a> BasmCompiler<'a> {
                     self.basm_push_inst(BasmInstruction::NATIVE, func_idx);
                 } else if func_call.name == "ptr" {
                     expr_type = self.compile_ptr(func_call);
+                } else if func_call.name == "cast" {
+                    expr_type = self.compile_cast(func_call);
                 } else if func_call.name == "load_ptr" {
                     expr_type = self.compile_load_ptr(func_call);
                 } else if func_call.name == "store_ptr" {
@@ -332,6 +326,37 @@ impl<'a> BasmCompiler<'a> {
             type_to_str(compiled_expr.expr_type)
         );
     }
+
+
+    fn compile_cast(&mut self, func_call: &AstFunCall) -> AstTypes {
+        self.check_function_arity(&func_call, 2);
+
+        let arg0 = &func_call.args[0];
+        let arg1 = &func_call.args[1];
+
+        let to_type = self.reinterpret_expr_as_type(arg0);
+        let from_expr = self.compile_expr(arg1);
+
+        self.type_check_expr(&from_expr, AstTypes::I64);
+
+        match to_type {
+            AstTypes::PTR => {
+                self.basm_push_inst(BasmInstruction::READ64I, 0);
+                to_type
+            }
+            AstTypes::BOOL | 
+            AstTypes::I64  |
+            AstTypes::VOID => {
+                let loc_msg = fmt_loc_err(self.filename_locations, &arg1.loc);
+                user_error!("{} can't convert from value of type {} to {}", 
+                    loc_msg, 
+                    type_to_str(from_expr.expr_type),
+                    type_to_str(to_type)
+                );
+            }
+        }
+    }
+
 
     fn compile_load_ptr(&mut self, func_call: &AstFunCall) -> AstTypes {
         self.check_function_arity(&func_call, 2);

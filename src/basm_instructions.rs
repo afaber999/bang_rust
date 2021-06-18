@@ -1,3 +1,5 @@
+use crate::parser::{AstBinaryOpKind, AstTypes};
+
 #[derive(Debug, Clone, Copy)]
 pub enum BasmInstruction {
     NOP,
@@ -135,3 +137,36 @@ pub fn basm_instruction_opcode(instruction: BasmInstruction) -> i64 {
         BasmInstruction::F2U => 63,
     }
 }
+
+
+#[must_use]
+pub fn map_binary_op_instructions( inp_type : AstTypes, kind : AstBinaryOpKind ) -> Option< (  BasmInstruction, AstTypes) > {
+
+    match kind {
+        AstBinaryOpKind::Plus => {
+            match inp_type {
+                AstTypes::I64 => Some( (BasmInstruction::PLUSI, AstTypes::I64) ),
+                AstTypes::PTR => Some( (BasmInstruction::PLUSI, AstTypes::PTR) ),
+                AstTypes::VOID |
+                AstTypes::BOOL => None,
+            }
+        },
+        AstBinaryOpKind::Less => {
+            match inp_type {
+                AstTypes::I64 => Some( (BasmInstruction::LTI, AstTypes::BOOL) ),
+                AstTypes::PTR => Some( (BasmInstruction::LTU, AstTypes::BOOL) ),
+                AstTypes::VOID |
+                AstTypes::BOOL => None,
+            }
+        },
+        AstBinaryOpKind::Mult => {
+            match inp_type {
+                AstTypes::I64 => Some( (BasmInstruction::MULTI, AstTypes::I64) ),
+                AstTypes::PTR => Some( (BasmInstruction::MULTU, AstTypes::PTR) ),
+                AstTypes::VOID |
+                AstTypes::BOOL => None,
+            }
+        },
+    }
+}
+

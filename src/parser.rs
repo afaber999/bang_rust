@@ -43,7 +43,7 @@ pub struct AstVarRead {
     pub name: String,
 }
 
-#[derive(Debug, Clone, VariantCount)]
+#[derive(Debug, Clone, Copy, VariantCount)]
 pub enum AstBinaryOpKind {
     Plus,
     Less,

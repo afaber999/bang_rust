@@ -201,22 +201,11 @@ impl<'a> Lexer<'a> {
             break;
         }
 
-        let hardcoded_tokens = [
-            ( "(", Kind::OpenParen),
-            ( ")", Kind::CloseParen),
-            ("{", Kind::OpenCurly),
-            ("}", Kind::CloseCurly),
-            (";", Kind::Semicolon),
-            (":", Kind::Colon),
-            ("=", Kind::Equals),
-            ("+", Kind::Plus),
-            ("<", Kind::Less),
-            (",", Kind::Comma),
-            ("*", Kind::Mult),
-        ];
+        let symbol_tokens = Token::get_symbol_tokens();
 
-        for (token_text, token_kind) in &hardcoded_tokens {
-            if self.starts_with(&token_text) {
+        for token_kind in symbol_tokens {
+            let token_text = Token::kind_name(*token_kind);
+            if self.starts_with(token_text) {
                 let opt_token = Some(self.extract_token(*token_kind, token_text.len()));
                 //println!( "NEXT TOKEN KIND: {:?}", &opt_token);
                 return opt_token;
