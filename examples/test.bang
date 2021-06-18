@@ -3,13 +3,13 @@ var heap_base : ptr;
 var count: i64;
 
 proc main() {
-  count = 26;
+  count = 6;
   i = 0;
   while i < count {
     store_ptr( 
         u8, 
         heap_base + cast(ptr, i), 
-        cast(u8, i + 65) );
+        cast(u8, ( ( (2*i) + 65) + 1 )+10) );
 
     i = i + 1;
   }

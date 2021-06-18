@@ -341,10 +341,15 @@ impl<'a> Parser<'a> {
                         kind: AstExprKind::LitString(literal),
                     };
                 }
+                Kind::OpenParen => {
+                    self.lexer.expect_token_next(Kind::OpenParen);
+                    let expr = self.parse_expr();
+                    self.lexer.expect_token_next(Kind::CloseParen);
+                    return expr;
+                },
                 Kind::Comma
                 | Kind::Colon
                 | Kind::Equals
-                | Kind::OpenParen
                 | Kind::CloseParen
                 | Kind::OpenCurly
                 | Kind::CloseCurly
