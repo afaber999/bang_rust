@@ -92,6 +92,7 @@ pub struct AstProcDef {
 pub enum AstTypes {
     VOID,
     I64,
+    U8,
     BOOL,
     PTR,
 }
@@ -138,17 +139,21 @@ pub fn name_to_type(type_name: &str) -> Option<AstTypes> {
     match type_name {
         "void" => Some(AstTypes::VOID),
         "i64" => Some(AstTypes::I64),
+        "u8" => Some(AstTypes::U8),
         "bool" => Some(AstTypes::BOOL),
         "ptr" => Some(AstTypes::PTR),
         _ => None,
     }
 }
 
+// TODO CHECK IF WE CAN USE From/INTO pattern
+// also update name_to_type
 pub fn type_to_str(type_kind: AstTypes) -> &'static str {
     match type_kind {
-        AstTypes::VOID => "void",
+        AstTypes::VOID =>"void",
         AstTypes::I64 => "i64",
-        AstTypes::BOOL => "bool",
+        AstTypes::U8 =>  "u8",
+        AstTypes::BOOL =>"bool",
         AstTypes::PTR => "ptr",
     }
 }

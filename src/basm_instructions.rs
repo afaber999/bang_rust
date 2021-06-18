@@ -1,6 +1,7 @@
+
 use crate::parser::{AstBinaryOpKind, AstTypes};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BasmInstruction {
     NOP,
     PUSH,
@@ -138,6 +139,35 @@ pub fn basm_instruction_opcode(instruction: BasmInstruction) -> i64 {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct ReadWriteInstructions {
+    size      : usize,
+    read      : BasmInstruction,
+    write     : BasmInstruction,
+}
+
+fn get_read_writes( inp_type : AstTypes) -> ReadWriteInstructions  {
+    match inp_type {
+        AstTypes::I64  => ReadWriteInstructions { size: 8, read: BasmInstruction::READ64I, write: BasmInstruction::WRITE64 },
+        AstTypes::U8   => ReadWriteInstructions { size: 1, read: BasmInstruction::READ8U , write: BasmInstruction::WRITE8  },
+        AstTypes::PTR  => ReadWriteInstructions { size: 8, read: BasmInstruction::READ64U, write: BasmInstruction::WRITE64 },
+        AstTypes::BOOL => ReadWriteInstructions { size: 8, read: BasmInstruction::READ64U, write: BasmInstruction::WRITE64 },
+        AstTypes::VOID => ReadWriteInstructions { size: 0, read: BasmInstruction::NOP    , write: BasmInstruction::NOP     },
+    }
+}
+
+pub fn get_type_read_instruction( inp_type : AstTypes) -> BasmInstruction  {
+    get_read_writes(inp_type).read
+}
+
+pub fn get_type_write_instruction( inp_type : AstTypes) -> BasmInstruction  {
+    get_read_writes(inp_type).write
+}
+
+pub fn get_type_size( inp_type : AstTypes) -> usize  {
+    get_read_writes(inp_type).size
+}
+
 
 #[must_use]
 pub fn map_binary_op_instructions( inp_type : AstTypes, kind : AstBinaryOpKind ) -> Option< (  BasmInstruction, AstTypes) > {
@@ -146,6 +176,7 @@ pub fn map_binary_op_instructions( inp_type : AstTypes, kind : AstBinaryOpKind )
         AstBinaryOpKind::Plus => {
             match inp_type {
                 AstTypes::I64 => Some( (BasmInstruction::PLUSI, AstTypes::I64) ),
+                AstTypes::U8  => Some( (BasmInstruction::PLUSI, AstTypes::U8 ) ),
                 AstTypes::PTR => Some( (BasmInstruction::PLUSI, AstTypes::PTR) ),
                 AstTypes::VOID |
                 AstTypes::BOOL => None,
@@ -154,6 +185,7 @@ pub fn map_binary_op_instructions( inp_type : AstTypes, kind : AstBinaryOpKind )
         AstBinaryOpKind::Less => {
             match inp_type {
                 AstTypes::I64 => Some( (BasmInstruction::LTI, AstTypes::BOOL) ),
+                AstTypes::U8  => Some( (BasmInstruction::LTU, AstTypes::BOOL) ),
                 AstTypes::PTR => Some( (BasmInstruction::LTU, AstTypes::BOOL) ),
                 AstTypes::VOID |
                 AstTypes::BOOL => None,
@@ -162,6 +194,7 @@ pub fn map_binary_op_instructions( inp_type : AstTypes, kind : AstBinaryOpKind )
         AstBinaryOpKind::Mult => {
             match inp_type {
                 AstTypes::I64 => Some( (BasmInstruction::MULTI, AstTypes::I64) ),
+                AstTypes::U8  => Some( (BasmInstruction::MULTI, AstTypes::U8 ) ),
                 AstTypes::PTR => Some( (BasmInstruction::MULTU, AstTypes::PTR) ),
                 AstTypes::VOID |
                 AstTypes::BOOL => None,

@@ -1,4 +1,4 @@
-use crate::basm_instructions::{BasmInstruction, basm_instruction_opcode, map_binary_op_instructions};
+use crate::basm_instructions::{BasmInstruction, basm_instruction_opcode, get_type_read_instruction, get_type_size, get_type_write_instruction, map_binary_op_instructions};
 use crate::location::{fmt_loc, fmt_loc_err, FileNameLocations, Location};
 use crate::parser::{AstBinaryOp, AstBlock, AstExpr, AstExprKind, AstFunCall, AstIfStatement, AstModule, AstProcDef, AstStatement, AstTop, AstTypes, AstVarAssign, AstVarDef, AstVarRead, AstWhileStatement, name_to_type, type_to_str};
 use std::collections::HashMap;
@@ -218,6 +218,8 @@ impl<'a> BasmCompiler<'a> {
                     self.basm_push_inst(BasmInstruction::NATIVE, func_idx);
                 } else if func_call.name == "ptr" {
                     expr_type = self.compile_ptr(func_call);
+                } else if func_call.name == "write_ptr" {
+                    expr_type = self.compile_write_ptr(func_call);
                 } else if func_call.name == "cast" {
                     expr_type = self.compile_cast(func_call);
                 } else if func_call.name == "load_ptr" {
@@ -327,6 +329,33 @@ impl<'a> BasmCompiler<'a> {
         );
     }
 
+    fn compile_write_ptr(&mut self, func_call: &AstFunCall) -> AstTypes {
+        self.check_function_arity(&func_call, 2);
+
+        let arg0 = &func_call.args[0];
+        let arg1 = &func_call.args[1];
+
+        // first put buffer pointer on stack
+        let buffer = self.compile_expr(arg0);
+        self.type_check_expr(&buffer, AstTypes::PTR);
+
+        // then  put length on stack
+        let length = self.compile_expr(arg1);
+        self.type_check_expr(&length, AstTypes::I64);
+
+        // call native write function
+        if let Some(idx) = self.externals.get("write") {
+            let func_idx = *idx as i64;
+            self.basm_push_inst(BasmInstruction::NATIVE, func_idx);
+        } else {
+            unreachable!("expects native write function")
+        }
+
+        // no returns
+        AstTypes::VOID
+    }
+
+
 
     fn compile_cast(&mut self, func_call: &AstFunCall) -> AstTypes {
         self.check_function_arity(&func_call, 2);
@@ -336,27 +365,21 @@ impl<'a> BasmCompiler<'a> {
 
         let to_type = self.reinterpret_expr_as_type(arg0);
         let from_expr = self.compile_expr(arg1);
+        let from_type = from_expr.expr_type;
 
-        self.type_check_expr(&from_expr, AstTypes::I64);
-
-        match to_type {
-            AstTypes::PTR => {
-                self.basm_push_inst(BasmInstruction::READ64I, 0);
-                to_type
-            }
-            AstTypes::BOOL | 
-            AstTypes::I64  |
-            AstTypes::VOID => {
-                let loc_msg = fmt_loc_err(self.filename_locations, &arg1.loc);
-                user_error!("{} can't convert from value of type {} to {}", 
-                    loc_msg, 
-                    type_to_str(from_expr.expr_type),
-                    type_to_str(to_type)
-                );
-            }
+        if  ( from_type == AstTypes::I64 && to_type == AstTypes::PTR ) ||
+            ( from_type == AstTypes::I64 && to_type == AstTypes::U8  ) ||
+            ( from_type == AstTypes::U8  && to_type == AstTypes::PTR ) {
+            return to_type;
         }
-    }
 
+        let loc_msg = fmt_loc_err(self.filename_locations, &arg1.loc);
+        user_error!("{} can't convert value of type {} to {}", 
+            loc_msg, 
+            type_to_str(from_type),
+            type_to_str(to_type)
+        );
+    }
 
     fn compile_load_ptr(&mut self, func_call: &AstFunCall) -> AstTypes {
         self.check_function_arity(&func_call, 2);
@@ -364,75 +387,72 @@ impl<'a> BasmCompiler<'a> {
         let arg0 = &func_call.args[0];
         let arg1 = &func_call.args[1];
 
-        let ptr_type = self.reinterpret_expr_as_type(arg0);
-
         let compiled_ptr_arg = self.compile_expr(arg1);
         self.type_check_expr(&compiled_ptr_arg, AstTypes::PTR);
+      
+        let ptr_type = self.reinterpret_expr_as_type(arg0);
+        let instr = get_type_read_instruction(ptr_type );
 
-        match ptr_type {
-            AstTypes::I64 => {
-                self.basm_push_inst(BasmInstruction::READ64I, 0);
-            }
-            AstTypes::BOOL | AstTypes::PTR => {
-                self.basm_push_inst(BasmInstruction::READ64U, 0);
-            }
-            AstTypes::VOID => {
-                let loc_msg = fmt_loc_err(self.filename_locations, &arg1.loc);
-                user_error!("{} can't load {} type", loc_msg, type_to_str(ptr_type));
-            }
+        if BasmInstruction::NOP == instr {
+            let loc_msg = fmt_loc_err(self.filename_locations, &arg0.loc);
+            user_error!("{} can't load {} type", loc_msg, type_to_str(ptr_type));
         }
+
+        self.basm_push_inst(instr, 0);
         compiled_ptr_arg.expr_type
     }
 
     fn compile_store_ptr(&mut self, func_call: &AstFunCall) -> AstTypes {
         self.check_function_arity(&func_call, 3);
 
+
         let arg0 = &func_call.args[0];
         let arg1 = &func_call.args[1];
         let arg2 = &func_call.args[2];
 
         let ptr_type = self.reinterpret_expr_as_type(arg0);
-
-        let ptr = self.compile_expr(arg1);
+        println!("CHECK 1");
+        
+        let ptr = self.compile_expr(arg1);       
         self.type_check_expr(&ptr, AstTypes::PTR);
+        println!("CHECK 2");
 
         let val = self.compile_expr(arg2);
         self.type_check_expr(&val, ptr_type);
+        println!("CHECK 3");
 
-        match ptr_type {
-            AstTypes::BOOL | AstTypes::PTR | AstTypes::I64 => {
-                self.basm_push_inst(BasmInstruction::WRITE64, 0);
-            }
-            AstTypes::VOID => {
-                let loc_msg = fmt_loc_err(self.filename_locations, &arg0.loc);
-                user_error!("{} can't store {} type", loc_msg, type_to_str(ptr_type));
-            }
+        let instr = get_type_write_instruction(ptr_type );
+
+        if BasmInstruction::NOP == instr {
+            let loc_msg = fmt_loc_err(self.filename_locations, &arg0.loc);
+            user_error!("{} can't store {} type", loc_msg, type_to_str(ptr_type));
         }
+        println!("CHECK 4");
+
+        self.basm_push_inst(instr, 0); 
 
         // result of store is void
         AstTypes::VOID
     }
 
     fn compile_var_read(&mut self, var_read: &AstVarRead) -> AstTypes {
+
         println!("compile_var_read ");
         if let Some(global_var) = self.global_vars.get(&var_read.name) {
             let var_type = global_var.def.var_type;
             let var_addr = global_var.addr;
 
-            match var_type {
-                AstTypes::VOID => {
-                    unreachable!(
-                        "Internal error, invalid type in variable assignment {:?}",
-                        var_type
-                    );
-                }
+            let instr = get_type_read_instruction(var_type );
 
-                AstTypes::PTR | AstTypes::BOOL | AstTypes::I64 => {
-                    self.basm_push_inst(BasmInstruction::PUSH, var_addr as BMword);
-                    self.basm_push_inst(BasmInstruction::READ64I, 0);
-                    return var_type;
-                }
+            if BasmInstruction::NOP == instr {
+                let loc_msg = fmt_loc_err(self.filename_locations, &var_read.loc);
+                user_error!("{} read var not supported for type {}", loc_msg, type_to_str(var_type));
             }
+
+            self.basm_push_inst(BasmInstruction::PUSH, var_addr as BMword);
+            self.basm_push_inst(instr, 0);
+            return var_type;
+
         }
 
         let loc_msg = fmt_loc_err(self.filename_locations, &var_read.loc);
@@ -607,45 +627,41 @@ impl<'a> BasmCompiler<'a> {
     fn compile_var_def(&mut self, var_def: &AstVarDef) {
         println!("compile_var_def ");
 
-        match &var_def.var_type {
-            AstTypes::VOID => {
-                let loc_msg = fmt_loc_err(self.filename_locations, &var_def.loc);
-                user_error!(
-                    "{} definining variables with type void is not allowed",
-                    loc_msg
-                );
-            }
-            AstTypes::I64 => {
-                let bt_array = vec![0, 0, 0, 0, 0, 0, 0, 0_u8];
-                let (addr, _) = self.push_buffer_to_memory(&bt_array);
-                let addr = addr as BMaddr;
 
-                // TODO DOES NOT CHECK IF VAR EXIST
-                self.global_vars.insert(
-                    var_def.name.clone(),
-                    CompiledVar {
-                        addr,
-                        def: var_def.clone(),
-                    },
-                );
-            
-            }
-            AstTypes::BOOL |
-            AstTypes::PTR => {
-                let bt_array = vec![0, 0, 0, 0, 0, 0, 0, 0_u8];
-                let (addr, _) = self.push_buffer_to_memory(&bt_array);
-                let addr = addr as BMaddr;
+        let var_size = get_type_size(var_def.var_type);
 
-                // TODO DOES NOT CHECK IF VAR EXIST
-                self.global_vars.insert(
-                    var_def.name.clone(),
-                    CompiledVar {
-                        addr,
-                        def: var_def.clone(),
-                    },
-                );
-            }
+        if var_size == 0 {
+            let loc_msg = fmt_loc_err(self.filename_locations, &var_def.loc);
+            user_error!(
+                "{} definining a variable of type {} is not allowed",
+                loc_msg,
+                type_to_str(var_def.var_type)
+            );
         }
+
+        // check if var already exists
+        if let Some(existing_var) = self.global_vars.get(&var_def.name) {
+            let existing_loc_msg = fmt_loc_err(self.filename_locations, &existing_var.def.loc);
+            let loc_msg = fmt_loc_err(self.filename_locations, &var_def.loc);
+            user_error!(
+                "{} variable with name {} is previously defined overhere {}",
+                loc_msg,
+                &var_def.name,
+                existing_loc_msg);            
+        }
+
+        let zero_vec = vec![0; var_size];
+        let (addr, _) = self.push_buffer_to_memory(&zero_vec);
+        let addr = addr as BMaddr;
+
+        self.global_vars.insert(
+            var_def.name.clone(),
+            CompiledVar {
+                addr,
+                def: var_def.clone(),
+            },
+        );
+
     }
 
     fn generate_heap_base(&mut self, heap_base_name : &str ) {
