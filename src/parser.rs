@@ -419,12 +419,12 @@ impl<'a> Parser<'a> {
         let lhs = self.parse_expr( Precedence::next( prec ) );
 
         if let Some(token) = self.lexer.peek(0) {
-            let name = self.lexer.get_string(token.text_start, token.text_len);
-            println!(
-                "EXPR: PEEKED TOKEN FOR EXPR {} Name: {}",
-                Token::kind_name(token.token_kind),
-                name
-            );
+            //let name = self.lexer.get_string(token.text_start, token.text_len);
+            // println!(
+            //     "EXPR: PEEKED TOKEN FOR EXPR {} Name: {}",
+            //     Token::kind_name(token.token_kind),
+            //     name
+            // );
 
             match &token.token_kind {
                 // groep binary operators?
@@ -487,9 +487,7 @@ impl<'a> Parser<'a> {
         if let Some(token) = self.lexer.peek(0) {
             if self.lexer.is_keyword(&token, "else") {
                 self.lexer.extract_next();
-                println!("ELSE block");
                 else_block = Some(Box::new(self.parse_curly_block()));
-                println!("END ELSE block");
             }
         }
 
@@ -615,7 +613,7 @@ impl<'a> Parser<'a> {
         // expect type name
         let token = self.lexer.expect_token_next(Kind::Name);
         let type_name = self.lexer.get_string(token.text_start, token.text_len);
-        println!("VAR TYPE NAME IS: {} ", type_name);
+        //println!("VAR TYPE NAME IS: {} ", type_name);
 
         if let Some(type_kind) = name_to_type(type_name.as_str()) {
             return type_kind;

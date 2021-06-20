@@ -191,7 +191,7 @@ impl<'a> BasmCompiler<'a> {
     }
 
     fn compile_expr(&mut self, expr: &AstExpr) -> CompiledExpr {
-        println!("compile_expr {:?}", expr);
+        // println!("compile_expr {:?}", expr);
 
         let inst_addr = self.get_inst_addr();
         let mut expr_type = AstTypes::VOID;
@@ -199,7 +199,7 @@ impl<'a> BasmCompiler<'a> {
         match &expr.kind {
             AstExprKind::FuncCall(func_call) => {
                 // TODO only built in functions are supported at this point in time
-                println!("AstExprKind::FuncCall: {:?}", func_call);
+                //println!("AstExprKind::FuncCall: {:?}", func_call);
 
                 let mut func_idx: i64 = -1;
                 if let Some(idx) = self.externals.get(&func_call.name) {
@@ -240,7 +240,7 @@ impl<'a> BasmCompiler<'a> {
             }
             AstExprKind::LitString(literal) => {
                 // AF TODO remove quotes?
-                println!("AstExprKind::LitString: {}", literal);
+                //println!("AstExprKind::LitString: {}", literal);
                 expr_type = AstTypes::I64;
 
                 let (mem_loc, mem_len) = self.push_string_to_memory(literal);
@@ -411,15 +411,12 @@ impl<'a> BasmCompiler<'a> {
         let arg2 = &func_call.args[2];
 
         let ptr_type = self.reinterpret_expr_as_type(arg0);
-        println!("CHECK 1");
         
         let ptr = self.compile_expr(arg1);       
         self.type_check_expr(&ptr, AstTypes::PTR);
-        println!("CHECK 2");
 
         let val = self.compile_expr(arg2);
         self.type_check_expr(&val, ptr_type);
-        println!("CHECK 3");
 
         let instr = get_type_write_instruction(ptr_type );
 
@@ -427,7 +424,6 @@ impl<'a> BasmCompiler<'a> {
             let loc_msg = fmt_loc_err(self.filename_locations, &arg0.loc);
             user_error!("{} can't store {} type", loc_msg, type_to_str(ptr_type));
         }
-        println!("CHECK 4");
 
         self.basm_push_inst(instr, 0); 
 
@@ -437,7 +433,7 @@ impl<'a> BasmCompiler<'a> {
 
     fn compile_var_read(&mut self, var_read: &AstVarRead) -> AstTypes {
 
-        println!("compile_var_read ");
+        //println!("compile_var_read ");
         if let Some(global_var) = self.global_vars.get(&var_read.name) {
             let var_type = global_var.def.var_type;
             let var_addr = global_var.addr;
@@ -474,7 +470,7 @@ impl<'a> BasmCompiler<'a> {
 
         self.basm_push_inst(BasmInstruction::NOT, 0);
         let jmp_no_if_op = self.basm_push_inst(BasmInstruction::JMPIf, 0) + 1;
-        println!("######### jmp_not_if_addr {} ", jmp_no_if_op);
+        //println!("######### jmp_not_if_addr {} ", jmp_no_if_op);
 
         self.compile_block(&if_statement.then_block);
 
@@ -487,7 +483,7 @@ impl<'a> BasmCompiler<'a> {
             self.program[jmp_no_if_op] = jmp_addr;
 
             let jmp_addr = self.get_inst_addr() as BMword;
-            println!("######### body_else_addr {} ", jmp_addr);
+            //println!("######### body_else_addr {} ", jmp_addr);
 
             self.compile_block(&else_block);
 
@@ -502,7 +498,7 @@ impl<'a> BasmCompiler<'a> {
     }
 
     fn compile_while_statement(&mut self, while_statement: &AstWhileStatement) {
-        println!("Compile while instruction condition ");
+        //println!("Compile while instruction condition ");
         let compiled_cond = self.compile_expr(&while_statement.condition);
 
         let loc_msg = fmt_loc_err(self.filename_locations, &while_statement.loc);
@@ -526,7 +522,7 @@ impl<'a> BasmCompiler<'a> {
     }
 
     fn compile_var_assign(&mut self, var_assign: &AstVarAssign) {
-        println!("compile_var_assign ");
+        //println!("compile_var_assign ");
         if let Some(global_var) = self.global_vars.get(&var_assign.name) {
             let var_addr = global_var.addr as BMword;
             let var_type = global_var.def.var_type;
@@ -547,7 +543,16 @@ impl<'a> BasmCompiler<'a> {
                 );
             }
 
-            self.basm_push_inst(BasmInstruction::WRITE64, 0);
+            // get instruction based on variable assignment type
+            let instr = get_type_write_instruction(var_type );
+
+            if BasmInstruction::NOP == instr {
+                let loc_msg = fmt_loc_err(self.filename_locations, &var_assign.loc);
+                user_error!("{} can't assign to type {}", loc_msg, type_to_str(var_type));
+            }
+    
+            self.basm_push_inst(instr, 0); 
+
             return;
         }
 
@@ -560,7 +565,7 @@ impl<'a> BasmCompiler<'a> {
     }
 
     pub fn compile_statement(&mut self, stmt: &AstStatement) {
-        println!("compile_statement: {:?}", &stmt);
+        //println!("compile_statement: {:?}", &stmt);
         match &stmt {
             AstStatement::Expr(expr) => {
                 let compiled_expr = self.compile_expr(&expr);
@@ -582,7 +587,7 @@ impl<'a> BasmCompiler<'a> {
     }
 
     pub fn compile_block(&mut self, block: &AstBlock) {
-        println!("compile_block ");
+        //println!("compile_block ");
         let stmts = &block.statements;
 
         for stmt in stmts {
@@ -595,7 +600,7 @@ impl<'a> BasmCompiler<'a> {
     }
 
     fn compile_proc_def(&mut self, proc_def: &AstProcDef) {
-        println!("compile_proc_def ");
+        //println!("compile_proc_def ");
         let inst_addr = self.get_inst_addr();
         let name = proc_def.name.clone();
         let body = &proc_def.body;
@@ -625,7 +630,7 @@ impl<'a> BasmCompiler<'a> {
     }
 
     fn compile_var_def(&mut self, var_def: &AstVarDef) {
-        println!("compile_var_def ");
+        //println!("compile_var_def ");
 
 
         let var_size = get_type_size(var_def.var_type);
@@ -678,8 +683,9 @@ impl<'a> BasmCompiler<'a> {
             }
 
             // end of memory location into heap_base variable address
-            let addr_bts = self.memory.len().to_ne_bytes();
+            let mut addr_bts = self.memory.len().to_ne_bytes();
             self.memory[ var.addr .. var.addr + addr_bts.len()].clone_from_slice(&addr_bts);
+            println!( "################ {} HEAP ADDR {}   BASE SET TO:  {:?}",self.memory.len(),var.addr, addr_bts);
         }
     }
 

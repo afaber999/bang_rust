@@ -1,0 +1,41 @@
+var heap_base  : ptr;
+var i          : i64;
+var table_base : ptr;
+var table_size : i64;
+var cell_ptr   : ptr;
+var cell       : u8;
+var tmp        : u8;
+
+
+proc init() {
+  table_base = heap_base;
+  table_size = 8;
+
+  store_ptr( u8, table_base + cast( ptr, 0 ), cast(u8, 0 ));
+  store_ptr( u8, table_base + cast( ptr, 1 ), cast(u8, 1 ));
+  store_ptr( u8, table_base + cast( ptr, 2 ), cast(u8, 1 ));
+  store_ptr( u8, table_base + cast( ptr, 3 ), cast(u8, 1 ));
+  store_ptr( u8, table_base + cast( ptr, 4 ), cast(u8, 0 ));
+  store_ptr( u8, table_base + cast( ptr, 5 ), cast(u8, 1 ));
+  store_ptr( u8, table_base + cast( ptr, 6 ), cast(u8, 1 ));
+  store_ptr( u8, table_base + cast( ptr, 7 ), cast(u8, 0 ));
+}
+
+proc print_table() {
+
+  i = 0;
+  while i < table_size {
+    cell_ptr = table_base + cast( ptr, i );
+    cell = load_ptr( u8, cell_ptr );
+    store_ptr( u8, cell_ptr, cell + cast( u8,48 ));
+    i = i + 1;
+  }
+  write_ptr( table_base, table_size);
+}
+
+proc main() {
+  init();
+  print_table();
+  write( "Finished\n");
+}
+
