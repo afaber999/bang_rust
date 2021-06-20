@@ -4,8 +4,8 @@ use crate::{
     token::{Token, Kind},
 };
 extern crate static_assertions as sa;
-
 use variant_count::VariantCount;
+use crate::precedence::Precedence;
 
 #[derive(Debug, Clone)]
 pub struct AstIfStatement {
@@ -46,6 +46,7 @@ pub struct AstVarRead {
 #[derive(Debug, Clone, Copy, VariantCount)]
 pub enum AstBinaryOpKind {
     Plus,
+    Minus,
     Less,
     Mult,
 }
@@ -120,6 +121,12 @@ pub enum AstTop {
 #[derive(Debug)]
 pub struct AstModule {
     pub tops: Vec<AstTop>,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct BinaryOpDef {
+    pub kind     : AstBinaryOpKind,
+    pub prec     : Precedence,
 }
 
 pub fn expr_kind_to_name(expr: &AstExpr) -> &'static str {
@@ -225,7 +232,7 @@ impl<'a> Parser<'a> {
 
         if let Some(next_token) = self.lexer.peek(0) {
             if next_token.token_kind != Kind::CloseParen {
-                args_expr.push(self.parse_expr());
+                args_expr.push(self.parse_expr(Precedence::P0));
             }
         }
 
@@ -235,7 +242,7 @@ impl<'a> Parser<'a> {
             }
             // consume comma token
             self.lexer.expect_token_next(Kind::Comma);
-            args_expr.push(self.parse_expr());
+            args_expr.push(self.parse_expr(Precedence::P0));
         }
 
         // expect close paren
@@ -343,7 +350,7 @@ impl<'a> Parser<'a> {
                 }
                 Kind::OpenParen => {
                     self.lexer.expect_token_next(Kind::OpenParen);
-                    let expr = self.parse_expr();
+                    let expr = self.parse_expr(Precedence::P0);
                     self.lexer.expect_token_next(Kind::CloseParen);
                     return expr;
                 },
@@ -354,6 +361,7 @@ impl<'a> Parser<'a> {
                 | Kind::OpenCurly
                 | Kind::CloseCurly
                 | Kind::Plus
+                | Kind::Minus
                 | Kind::Mult
                 | Kind::Less
                 | Kind::Semicolon => {
@@ -374,9 +382,41 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_expr(&mut self) -> AstExpr {
+
+    fn binary_op_defs(kind: Kind ) -> BinaryOpDef {
+
+        match kind {
+            Kind::Less  => BinaryOpDef{  kind : AstBinaryOpKind::Less , prec: Precedence::P0 },
+            Kind::Plus  => BinaryOpDef{  kind : AstBinaryOpKind::Plus , prec: Precedence::P1 },
+            Kind::Minus => BinaryOpDef{  kind : AstBinaryOpKind::Minus, prec: Precedence::P1 },
+            Kind::Mult  => BinaryOpDef{  kind : AstBinaryOpKind::Mult , prec: Precedence::P2 },
+            Kind::Name |
+            Kind::Number |
+            Kind::OpenParen |
+            Kind::CloseParen |
+            Kind::OpenCurly |
+            Kind::CloseCurly |
+            Kind::Semicolon |
+            Kind::Literal |
+            Kind::Colon |
+            Kind::Equals |
+            Kind::Comma => {
+                unreachable!();
+            }
+        }
+    }
+
+                    
+
+    fn parse_expr(&mut self, prec : Precedence ) -> AstExpr {
+
         println!("---------- PARSE EXPR ");
-        let lhs = self.parse_primary_expr();
+
+        if prec == Precedence::PMax {
+            return self.parse_primary_expr();
+        }
+
+        let lhs = self.parse_expr( Precedence::next( prec ) );
 
         if let Some(token) = self.lexer.peek(0) {
             let name = self.lexer.get_string(token.text_start, token.text_len);
@@ -388,53 +428,33 @@ impl<'a> Parser<'a> {
 
             match &token.token_kind {
                 // groep binary operators?
-                Kind::Plus => {
-                    self.lexer.extract_next();
-                    let rhs = self.parse_expr();
+                Kind::Less |
+                Kind::Mult |
+                Kind::Plus |
+                Kind::Minus => {
 
-                    let kind = AstExprKind::BinarayOp(AstBinaryOp {
-                        loc: token.loc,
-                        kind: AstBinaryOpKind::Plus,
-                        lhs: Box::new(lhs),
-                        rhs: Box::new(rhs),
-                    });
+                    // token is binary operator
+                    let bin_op_def = Self::binary_op_defs(token.token_kind);
 
-                    return AstExpr {
-                        loc: token.loc,
-                        kind,
-                    };
-                }
-                Kind::Mult => {
-                    self.lexer.extract_next();
-                    let rhs = self.parse_expr();
-
-                    let kind = AstExprKind::BinarayOp(AstBinaryOp {
-                        loc: token.loc,
-                        kind: AstBinaryOpKind::Mult,
-                        lhs: Box::new(lhs),
-                        rhs: Box::new(rhs),
-                    });
-
-                    return AstExpr {
-                        loc: token.loc,
-                        kind,
-                    };
+                    // check if the precdedence of the operator
+                    if bin_op_def.prec == prec {
+                        self.lexer.extract_next();
+                        let rhs = self.parse_expr(prec);
+    
+                        let kind = AstExprKind::BinarayOp(AstBinaryOp {
+                            loc: token.loc,
+                            kind: bin_op_def.kind,
+                            lhs: Box::new(lhs),
+                            rhs: Box::new(rhs),
+                        });
+    
+                        return AstExpr {
+                            loc: token.loc,
+                            kind,
+                        };
+                    }
                 }
 
-                Kind::Less => {
-                    self.lexer.extract_next();
-                    let rhs = self.parse_expr();
-                    let kind = AstExprKind::BinarayOp(AstBinaryOp {
-                        loc: token.loc,
-                        kind: AstBinaryOpKind::Less,
-                        lhs: Box::new(lhs),
-                        rhs: Box::new(rhs),
-                    });
-                    return AstExpr {
-                        loc: token.loc,
-                        kind,
-                    };
-                }
                 Kind::Name
                 | Kind::Number
                 | Kind::OpenParen
@@ -459,7 +479,7 @@ impl<'a> Parser<'a> {
         let token = self.lexer.expect_keyword("if");
 
         // open and close paren
-        let expr = self.parse_expr();
+        let expr = self.parse_expr(Precedence::P0);
         let then_block = Box::new(self.parse_curly_block());
 
         let mut else_block = None;
@@ -487,7 +507,7 @@ impl<'a> Parser<'a> {
         let token = self.lexer.expect_keyword("while");
 
         // open and close paren
-        let expr = self.parse_expr();
+        let expr = self.parse_expr(Precedence::P0);
         let block = Box::new(self.parse_curly_block());
 
         AstStatement::While(AstWhileStatement {
@@ -529,6 +549,7 @@ impl<'a> Parser<'a> {
                 | Kind::Colon
                 | Kind::Equals
                 | Kind::Plus
+                | Kind::Minus
                 | Kind::Mult
                 | Kind::Less
                 | Kind::Comma
@@ -539,7 +560,7 @@ impl<'a> Parser<'a> {
 
             // parse as exprssion with a semicolon
             println!("---------- PARSE STATMENT AS EXPRESSION ");
-            let stmt = AstStatement::Expr(self.parse_expr());
+            let stmt = AstStatement::Expr(self.parse_expr(Precedence::P0));
             self.lexer.expect_token_next(Kind::Semicolon);
             stmt
         } else {
@@ -639,7 +660,7 @@ impl<'a> Parser<'a> {
         let name = self.lexer.get_string(token.text_start, token.text_len);
         let loc = token.loc;
         let _ = self.lexer.expect_token_next(Kind::Equals);
-        let expr = self.parse_expr();
+        let expr = self.parse_expr(Precedence::P0);
         let _ = self.lexer.expect_token_next(Kind::Semicolon);
 
         AstStatement::VarAssign(AstVarAssign { loc, name, expr })

@@ -399,7 +399,7 @@ impl<'a> BasmCompiler<'a> {
         }
 
         self.basm_push_inst(instr, 0);
-        compiled_ptr_arg.expr_type
+        ptr_type
     }
 
     fn compile_store_ptr(&mut self, func_call: &AstFunCall) -> AstTypes {

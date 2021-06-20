@@ -15,7 +15,7 @@ use std::{convert::From, env, panic, path::PathBuf};
 
 #[macro_use]
 pub mod errors;
-
+pub mod precedence;
 pub mod basm_compiler;
 pub mod basm_instructions;
 pub mod lexer;

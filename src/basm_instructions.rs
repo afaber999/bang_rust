@@ -182,6 +182,15 @@ pub fn map_binary_op_instructions( inp_type : AstTypes, kind : AstBinaryOpKind )
                 AstTypes::BOOL => None,
             }
         },
+        AstBinaryOpKind::Minus => {
+            match inp_type {
+                AstTypes::I64 => Some( (BasmInstruction::MINUSI, AstTypes::I64) ),
+                AstTypes::U8  => Some( (BasmInstruction::MINUSI, AstTypes::U8 ) ),
+                AstTypes::PTR => Some( (BasmInstruction::MINUSI, AstTypes::PTR) ),
+                AstTypes::VOID |
+                AstTypes::BOOL => None,
+            }
+        },
         AstBinaryOpKind::Less => {
             match inp_type {
                 AstTypes::I64 => Some( (BasmInstruction::LTI, AstTypes::BOOL) ),
