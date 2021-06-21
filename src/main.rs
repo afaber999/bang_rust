@@ -6,7 +6,7 @@
 #![allow(clippy::non_ascii_literal)]
 #![allow(clippy::shadow_unrelated)]
 #![allow(clippy::must_use_candidate)]
-#![allow(clippy::clippy::missing_panics_doc)]
+
 
 //#![warn(missing_docs)]
 
@@ -38,8 +38,7 @@ fn usage(program_name: &str) {
 fn main() -> Result<()> {
     panic::set_hook(Box::new(|panic_info| {
         if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
-            let msg = s.to_string();
-            eprintln!("{:?}", msg);
+            eprintln!("{:?}", s);
         } else {
             eprintln!("{}", &panic_info);
         }
@@ -91,7 +90,7 @@ fn main() -> Result<()> {
     //     println!("{}", line?);
 
     // }
-    let lexer = Lexer::new(input_file, input_file_name, &filename_locations);
+    let lexer = Lexer::new(&input_file, input_file_name, &filename_locations);
     let mut parser = Parser::new(lexer, &filename_locations);
     let module = parser.parse();
 

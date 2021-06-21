@@ -17,7 +17,7 @@ Use cargo run filename.bang (e.g. cargo run .\examples\rule110.bang)
 
 
 ## Status
-I try to keep up with the latest features, is is possible to compile the the rule 110 (rule110.bang) and the game of life (gol.babg) bang files.
+I try to keep up with the latest features, is is possible to compile the the rule 110 (rule110.bang) and the game of life (gol.bang) bang files.
 
 ## Todos:
 * Parsing fails when last line doesn't contain a newline char

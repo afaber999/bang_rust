@@ -20,7 +20,7 @@ pub struct Lexer<'a> {
 
 impl<'a> Lexer<'a> {
     pub fn new(
-        content: String,
+        content: &str,
         input_file_name: String,
         filename_locations: &'a FileNameLocations,
     ) -> Self {

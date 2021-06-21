@@ -293,9 +293,9 @@ impl<'a> Parser<'a> {
 
             let loc = token.loc;
 
-            match token.token_kind {
+            return match token.token_kind {
                 Kind::Name => {
-                    return match name.as_str() {
+                    match name.as_str() {
                         "true" => {
                             self.lexer.extract_next();
 
@@ -331,7 +331,7 @@ impl<'a> Parser<'a> {
                                 kind: AstExprKind::VarRead(var_read),
                             }
                         }
-                    };
+                    }
                 }
                 Kind::Number => {
                     let _ = self.lexer.extract_next();
@@ -348,16 +348,16 @@ impl<'a> Parser<'a> {
                 }
                 Kind::Literal => {
                     let literal = self.parse_string_literal();
-                    return AstExpr {
+                    AstExpr {
                         loc,
                         kind: AstExprKind::LitString(literal),
-                    };
+                    }
                 }
                 Kind::OpenParen => {
                     self.lexer.expect_token_next(Kind::OpenParen);
                     let expr = self.parse_expr(Precedence::P0);
                     self.lexer.expect_token_next(Kind::CloseParen);
-                    return expr;
+                    expr
                 },
                 Kind::Comma
                 | Kind::Colon
@@ -383,13 +383,13 @@ impl<'a> Parser<'a> {
                     );
                 }
             };
-        } else {
-            let loc_msg = fmt_loc_err(self.filename_locations, &self.lexer.get_location());
-            user_error!(
-                "{} expected primary expression, reached end of file",
-                loc_msg
-            );
         }
+        
+        let loc_msg = fmt_loc_err(self.filename_locations, &self.lexer.get_location());
+        user_error!(
+            "{} expected primary expression, reached end of file",
+            loc_msg
+        );
     }
 
 

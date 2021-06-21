@@ -150,7 +150,7 @@ fn get_read_writes( inp_type : AstTypes) -> ReadWriteInstructions  {
     match inp_type {
         AstTypes::I64  => ReadWriteInstructions { size: 8, read: BasmInstruction::READ64I, write: BasmInstruction::WRITE64 },
         AstTypes::U8   => ReadWriteInstructions { size: 1, read: BasmInstruction::READ8U , write: BasmInstruction::WRITE8  },
-        AstTypes::PTR  => ReadWriteInstructions { size: 8, read: BasmInstruction::READ64U, write: BasmInstruction::WRITE64 },
+        AstTypes::PTR  |
         AstTypes::BOOL => ReadWriteInstructions { size: 8, read: BasmInstruction::READ64U, write: BasmInstruction::WRITE64 },
         AstTypes::VOID => ReadWriteInstructions { size: 0, read: BasmInstruction::NOP    , write: BasmInstruction::NOP     },
     }
@@ -224,7 +224,7 @@ pub fn map_binary_op_instructions( inp_type : AstTypes, kind : AstBinaryOpKind )
         AstBinaryOpKind::LessThen => {
             match inp_type {
                 AstTypes::I64 => Some( (BasmInstruction::LTI, AstTypes::BOOL) ),
-                AstTypes::U8  => Some( (BasmInstruction::LTU, AstTypes::BOOL) ),
+                AstTypes::U8  |
                 AstTypes::PTR => Some( (BasmInstruction::LTU, AstTypes::BOOL) ),
                 AstTypes::VOID |
                 AstTypes::BOOL => None,
@@ -233,7 +233,7 @@ pub fn map_binary_op_instructions( inp_type : AstTypes, kind : AstBinaryOpKind )
         AstBinaryOpKind::EqualsEquals => {
             match inp_type {
                 AstTypes::I64 => Some( (BasmInstruction::EQI, AstTypes::BOOL) ),
-                AstTypes::U8  => Some( (BasmInstruction::EQU, AstTypes::BOOL) ),
+                AstTypes::U8  |
                 AstTypes::PTR => Some( (BasmInstruction::EQU, AstTypes::BOOL) ),
                 AstTypes::VOID |
                 AstTypes::BOOL => None,
@@ -242,7 +242,7 @@ pub fn map_binary_op_instructions( inp_type : AstTypes, kind : AstBinaryOpKind )
         AstBinaryOpKind::GreaterEqual => {
             match inp_type {
                 AstTypes::I64 => Some( (BasmInstruction::GEI, AstTypes::BOOL) ),
-                AstTypes::U8  => Some( (BasmInstruction::GEU, AstTypes::BOOL) ),
+                AstTypes::U8  |
                 AstTypes::PTR => Some( (BasmInstruction::GEU, AstTypes::BOOL) ),
                 AstTypes::VOID |
                 AstTypes::BOOL => None,
@@ -251,7 +251,7 @@ pub fn map_binary_op_instructions( inp_type : AstTypes, kind : AstBinaryOpKind )
         AstBinaryOpKind::NotEqual => {
             match inp_type {
                 AstTypes::I64 => Some( (BasmInstruction::NEI, AstTypes::BOOL) ),
-                AstTypes::U8  => Some( (BasmInstruction::NEU, AstTypes::BOOL) ),
+                AstTypes::U8  |
                 AstTypes::PTR => Some( (BasmInstruction::NEU, AstTypes::BOOL) ),
                 AstTypes::VOID |
                 AstTypes::BOOL => None,
