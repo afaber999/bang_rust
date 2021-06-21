@@ -482,9 +482,6 @@ impl<'a> BasmCompiler<'a> {
             let jmp_addr = self.get_inst_addr() as BMword;
             self.program[jmp_no_if_op] = jmp_addr;
 
-            let jmp_addr = self.get_inst_addr() as BMword;
-            //println!("######### body_else_addr {} ", jmp_addr);
-
             self.compile_block(&else_block);
 
             // fill in deferred address of jmp over else block
@@ -685,7 +682,6 @@ impl<'a> BasmCompiler<'a> {
             // end of memory location into heap_base variable address
             let mut addr_bts = self.memory.len().to_ne_bytes();
             self.memory[ var.addr .. var.addr + addr_bts.len()].clone_from_slice(&addr_bts);
-            println!( "################ {} HEAP ADDR {}   BASE SET TO:  {:?}",self.memory.len(),var.addr, addr_bts);
         }
     }
 

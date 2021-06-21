@@ -180,7 +180,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_string_literal(&mut self) -> String {
-        println!("---------- PARSE STRING LITERAL ");
+        // println!("---------- PARSE STRING LITERAL ");
 
         let token = self.lexer.expect_token_next(Kind::Literal);
 
@@ -225,7 +225,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_func_call_args(&mut self) -> Vec<AstExpr> {
-        println!("---------- PARSE FUNC_CALL ARGS ");
+        // println!("---------- PARSE FUNC_CALL ARGS ");
         let mut args_expr = Vec::new();
 
         self.lexer.expect_token_next(Kind::OpenParen);
@@ -252,7 +252,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_func_call(&mut self) -> AstFunCall {
-        println!("---------- PARSE FUNC_CALL ");
+        // println!("---------- PARSE FUNC_CALL ");
 
         let token = self.lexer.expect_token_next(Kind::Name);
         let name = self.lexer.get_string(token.text_start, token.text_len);
@@ -266,7 +266,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_var_read(&mut self) -> AstVarRead {
-        println!("---------- PARSE VAR READ ");
+        // println!("---------- PARSE VAR READ ");
         let token = self.lexer.expect_token_next(Kind::Name);
         let name = self.lexer.get_string(token.text_start, token.text_len);
         AstVarRead {
@@ -276,15 +276,15 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_primary_expr(&mut self) -> AstExpr {
-        println!("---------- PARSE PRIMARY EXPR ");
+        // println!("---------- PARSE PRIMARY EXPR ");
 
         if let Some(token) = self.lexer.peek(0) {
             let name = self.lexer.get_string(token.text_start, token.text_len);
-            println!(
-                "PRIMARY EXPR PEEKED TOKEN FOR EXPR {} Name: {}",
-                Token::kind_name(token.token_kind),
-                name
-            );
+            // println!(
+            //     "PRIMARY EXPR PEEKED TOKEN FOR EXPR {} Name: {}",
+            //     Token::kind_name(token.token_kind),
+            //     name
+            // );
 
             let loc = token.loc;
 
@@ -410,7 +410,7 @@ impl<'a> Parser<'a> {
 
     fn parse_expr(&mut self, prec : Precedence ) -> AstExpr {
 
-        println!("---------- PARSE EXPR ");
+        // println!("---------- PARSE EXPR ");
 
         if prec == Precedence::PMax {
             return self.parse_primary_expr();
@@ -474,7 +474,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_if(&mut self) -> AstStatement {
-        println!("---------- PARSE IF STATMENT ");
+        // println!("---------- PARSE IF STATMENT ");
 
         let token = self.lexer.expect_keyword("if");
 
@@ -500,7 +500,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_while(&mut self) -> AstStatement {
-        println!("---------- PARSE WHILE STATMENT ");
+        // println!("---------- PARSE WHILE STATMENT ");
 
         let token = self.lexer.expect_keyword("while");
 
@@ -516,7 +516,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_statement(&mut self) -> AstStatement {
-        println!("---------- PARSE STATMENT ");
+        // println!("---------- PARSE STATMENT ");
 
         if let Some(token) = self.lexer.peek(0) {
             match token.token_kind {
@@ -557,7 +557,7 @@ impl<'a> Parser<'a> {
             };
 
             // parse as exprssion with a semicolon
-            println!("---------- PARSE STATMENT AS EXPRESSION ");
+            // println!("---------- PARSE STATMENT AS EXPRESSION ");
             let stmt = AstStatement::Expr(self.parse_expr(Precedence::P0));
             self.lexer.expect_token_next(Kind::Semicolon);
             stmt
@@ -568,7 +568,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_curly_block(&mut self) -> AstBlock {
-        println!("---------- CURLY BLOCK ");
+        // println!("---------- CURLY BLOCK ");
         let mut stmts = Vec::new();
 
         // expect open curly
@@ -588,7 +588,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_proc_def(&mut self) -> AstProcDef {
-        println!("---------- PARSE PROC DEF ");
+        // println!("---------- PARSE PROC DEF ");
 
         // check proc token
         let token = self.lexer.expect_keyword("proc");
@@ -609,7 +609,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_type(&mut self) -> AstTypes {
-        println!("---------- PARSE TYPE ");
+        // println!("---------- PARSE TYPE ");
         // expect type name
         let token = self.lexer.expect_token_next(Kind::Name);
         let type_name = self.lexer.get_string(token.text_start, token.text_len);
@@ -625,7 +625,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_var_def(&mut self) -> AstVarDef {
-        println!("---------- PARSE VAR DEF");
+        // println!("---------- PARSE VAR DEF");
 
         // check var token
         let token = self.lexer.expect_keyword("var");
@@ -651,7 +651,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_var_assign(&mut self) -> AstStatement {
-        println!("---------- PARSE VAR ASSIGN ");
+        // println!("---------- PARSE VAR ASSIGN ");
 
         // check var token
         let token = self.lexer.expect_token_next(Kind::Name);
@@ -665,7 +665,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_top(&mut self, token: &Token) -> AstTop {
-        println!("---------- PARSE TOP ");
+        // println!("---------- PARSE TOP ");
 
         if self.lexer.is_keyword(&token, "proc") {
             return AstTop::ProcDef(self.parse_proc_def());
