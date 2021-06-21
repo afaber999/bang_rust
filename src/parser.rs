@@ -396,15 +396,18 @@ impl<'a> Parser<'a> {
     fn binary_op_defs(kind: Kind ) -> BinaryOpDef {
 
         match kind {
-            Kind::AndAnd        => BinaryOpDef{  kind : AstBinaryOpKind::AndAnd       , prec: Precedence::P0 },
-            Kind::OrOr          => BinaryOpDef{  kind : AstBinaryOpKind::OrOr         , prec: Precedence::P0 },
-            Kind::LessThen      => BinaryOpDef{  kind : AstBinaryOpKind::NotEqual     , prec: Precedence::P1 },
-            Kind::GreaterEqual  => BinaryOpDef{  kind : AstBinaryOpKind::GreaterEqual , prec: Precedence::P1 },
-            Kind::NotEqual      => BinaryOpDef{  kind : AstBinaryOpKind::LessThen     , prec: Precedence::P1 },
-            Kind::EqualsEquals  => BinaryOpDef{  kind : AstBinaryOpKind::EqualsEquals , prec: Precedence::P1 },
+
             Kind::Plus          => BinaryOpDef{  kind : AstBinaryOpKind::Plus         , prec: Precedence::P2 },
             Kind::Minus         => BinaryOpDef{  kind : AstBinaryOpKind::Minus        , prec: Precedence::P2 },
             Kind::Mult          => BinaryOpDef{  kind : AstBinaryOpKind::Mult         , prec: Precedence::P3 },
+
+            Kind::AndAnd        => BinaryOpDef{  kind : AstBinaryOpKind::AndAnd       , prec: Precedence::P0 },
+            Kind::EqualsEquals  => BinaryOpDef{  kind : AstBinaryOpKind::EqualsEquals , prec: Precedence::P1 },
+            Kind::GreaterEqual  => BinaryOpDef{  kind : AstBinaryOpKind::GreaterEqual , prec: Precedence::P1 },
+            Kind::LessThen      => BinaryOpDef{  kind : AstBinaryOpKind::LessThen     , prec: Precedence::P1 },
+            Kind::NotEqual      => BinaryOpDef{  kind : AstBinaryOpKind::NotEqual     , prec: Precedence::P1 },
+            Kind::OrOr          => BinaryOpDef{  kind : AstBinaryOpKind::OrOr         , prec: Precedence::P0 },
+
             Kind::Name |
             Kind::Number |
             Kind::OpenParen |
@@ -728,3 +731,4 @@ impl<'a> Parser<'a> {
         self.parse_module()
     }
 }
+

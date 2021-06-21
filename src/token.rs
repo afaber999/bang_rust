@@ -1,7 +1,6 @@
 use crate::location::Location;
-use enum_iterator::IntoEnumIterator;
 
-#[derive(Debug, Clone, Copy, IntoEnumIterator, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Kind {
     Name,
     Number,

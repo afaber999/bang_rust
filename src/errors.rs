@@ -2,7 +2,7 @@
 #[doc(hidden)]
 pub fn error_abort__(msg: &str) -> ! {
     use std::io::Write;
-    let _ = writeln!(std::io::stderr(), "{}", msg);
+    std::mem::drop( writeln!(std::io::stderr(), "{}", msg));
     std::process::exit(-1);
 }
 

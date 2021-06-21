@@ -1,0 +1,69 @@
+var ia : i64;
+var ib : i64;
+
+var pa : ptr;
+var pb : ptr;
+
+proc main() {
+
+    if  true  { write( "1 OK\n"); } else { write( "1 NOK\n"); }
+
+    ia = 0 - 12345678;
+    ib = 0 - 12345678;
+
+    if  ia == ib  { write( "2 OK\n"); } else { write( "2 NOK\n"); }
+    if  ia != ib  { write( "3 NOK\n"); } else { write( "3 OK\n"); }
+
+    ib = 0 - 12345679;
+    if  ia != ib  { write( "4 OK\n"); } else { write( "4 NOK\n"); }
+    if  ia == ib  { write( "5 NOK\n"); } else { write( "5 OK\n"); }
+
+
+
+    pa = cast(ptr, 12345678);
+    pb = cast(ptr, 12345678);
+
+    if  pa == pb  { write( "6 OK\n"); } else { write( "6 NOK\n"); }
+    if  pa != pb  { write( "7 NOK\n"); } else { write( "7 OK\n"); }
+
+    pb = cast(ptr, 12345679);
+
+    if  pa != pb  { write( "8 OK\n"); } else { write( "8 NOK\n"); }
+    if  pa == pb  { write( "9 NOK\n"); } else { write( "9 OK\n"); }
+
+    if false && false { write( "10 NOK\n"); } else { write( "10 OK\n"); }
+    if true && false { write( "11 NOK\n"); } else { write( "11 OK\n"); }
+    if false && true { write( "12 NOK\n"); } else { write( "12 OK\n"); }
+    if true && true { write( "13 OK\n"); } else { write( "13 NOK\n"); }
+
+
+    if false || false { write( "14 NOK\n"); } else { write( "14 OK\n"); }
+    if true || false { write( "15 OK\n"); } else { write( "15 NOK\n"); }
+    if false || true { write( "16 OK\n"); } else { write( "16 NOK\n"); }
+    if true || true { write( "17 OK\n"); } else { write( "17 NOK\n"); }
+
+    #if true == true { write( "18 OK\n"); } else { write( "18 NOK\n"); }
+    #if false == false { write( "19 OK\n"); } else { write( "19 NOK\n"); }
+
+    #if true != true { write( "20 NOK\n"); } else { write( "20 OK\n"); }
+    #if false != false { write( "21 NOK\n"); } else { write( "21 OK\n"); }
+
+
+    ia = 1;
+    ib = 2;
+    if  ib >= ia  { write( "30 OK\n"); } else { write( "30 OK\n"); }
+    if  ia <  ib  { write( "31 OK\n"); } else { write( "31 OK\n"); }
+
+    ia = 0-1;
+    if  ib >= ia  { write( "32 OK\n"); } else { write( "32 OK\n"); }
+    if  ia <  ib  { write( "33 OK\n"); } else { write( "33 OK\n"); }
+
+    ia = 0-2;
+    ib = 0-1;
+    if  ib >= ia  { write( "34 OK\n"); } else { write( "34 OK\n"); }
+    if  ia <  ib  { write( "35 OK\n"); } else { write( "35 OK\n"); }
+
+
+}
+
+
