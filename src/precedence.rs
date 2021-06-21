@@ -1,5 +1,5 @@
 
-use Precedence::{P0,P1,P2, PMax};
+use Precedence::{P0,P1,P2, P3, PMax};
 use variant_count::VariantCount;
 
 
@@ -8,6 +8,7 @@ pub enum Precedence {
     P0,
     P1,
     P2,
+    P3,
     PMax,
 }
 
@@ -16,7 +17,8 @@ impl Precedence {
         match current {
             P0 => P1,
             P1 => P2,
-            P2 | PMax => PMax,
+            P2 => P3,
+            P3 | PMax => PMax,
         }
     } 
 }

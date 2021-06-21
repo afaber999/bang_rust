@@ -5,19 +5,29 @@ use enum_iterator::IntoEnumIterator;
 pub enum Kind {
     Name,
     Number,
+
     OpenParen,
     CloseParen,
+
     OpenCurly,
     CloseCurly,
+
     Semicolon,
     Literal,
     Colon,
-    Equals,
-    Plus,
-    Minus,
-    Less,
     Comma,
+
+    Plus,
     Mult,
+    Minus,
+
+    AndAnd,
+    Equals,
+    EqualsEquals,
+    GreaterEqual,
+    LessThen,
+    NotEqual,
+    OrOr,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -45,6 +55,7 @@ impl Token {
         match token_kind {
             Kind::Name => "Name",
             Kind::Number => "Number",
+
             Kind::OpenParen => "(",
             Kind::CloseParen => ")",
             Kind::OpenCurly => "{",
@@ -52,17 +63,34 @@ impl Token {
             Kind::Semicolon => ";",
             Kind::Literal => "Literal",
             Kind::Colon => ":",
-            Kind::Equals => "=",
+            Kind::Comma => ",",
+            
             Kind::Plus => "+",
             Kind::Minus => "-",
-            Kind::Less => "<",
-            Kind::Comma => ",",
             Kind::Mult => "*",
+            
+            Kind::AndAnd => "&&",
+            Kind::Equals => "=",
+            Kind::EqualsEquals => "==",
+            Kind::GreaterEqual => ">=",
+            Kind::LessThen => "<",
+            Kind::NotEqual => "!=",
+            Kind::OrOr   => "||",
+
         }
     }
     
     pub fn get_symbol_tokens() -> &'static [Kind] {
+        // note the order is important, the longest symbols must be listed first!
         &[
+            // two characters tokens
+            Kind::AndAnd,
+            Kind::EqualsEquals,
+            Kind::GreaterEqual,
+            Kind::NotEqual,
+            Kind::OrOr,
+
+            // single characters tokens
             Kind::OpenParen,
             Kind::CloseParen,
             Kind::OpenCurly,
@@ -72,7 +100,7 @@ impl Token {
             Kind::Equals,
             Kind::Plus,
             Kind::Minus,
-            Kind::Less,
+            Kind::LessThen,
             Kind::Comma,
             Kind::Mult,       
         ]

@@ -47,8 +47,13 @@ pub struct AstVarRead {
 pub enum AstBinaryOpKind {
     Plus,
     Minus,
-    Less,
     Mult,
+    AndAnd,
+    LessThen,
+    GreaterEqual,
+    NotEqual,
+    EqualsEquals,
+    OrOr,
 }
 
 #[derive(Debug, Clone)]
@@ -356,14 +361,19 @@ impl<'a> Parser<'a> {
                 },
                 Kind::Comma
                 | Kind::Colon
+                | Kind::AndAnd
                 | Kind::Equals
+                | Kind::EqualsEquals
+                | Kind::GreaterEqual
+                | Kind::NotEqual
+                | Kind::LessThen
+                | Kind::OrOr
                 | Kind::CloseParen
                 | Kind::OpenCurly
                 | Kind::CloseCurly
                 | Kind::Plus
                 | Kind::Minus
                 | Kind::Mult
-                | Kind::Less
                 | Kind::Semicolon => {
                     let loc_msg = fmt_loc_err(self.filename_locations, &token.loc);
                     user_error!(
@@ -386,10 +396,15 @@ impl<'a> Parser<'a> {
     fn binary_op_defs(kind: Kind ) -> BinaryOpDef {
 
         match kind {
-            Kind::Less  => BinaryOpDef{  kind : AstBinaryOpKind::Less , prec: Precedence::P0 },
-            Kind::Plus  => BinaryOpDef{  kind : AstBinaryOpKind::Plus , prec: Precedence::P1 },
-            Kind::Minus => BinaryOpDef{  kind : AstBinaryOpKind::Minus, prec: Precedence::P1 },
-            Kind::Mult  => BinaryOpDef{  kind : AstBinaryOpKind::Mult , prec: Precedence::P2 },
+            Kind::AndAnd        => BinaryOpDef{  kind : AstBinaryOpKind::AndAnd       , prec: Precedence::P0 },
+            Kind::OrOr          => BinaryOpDef{  kind : AstBinaryOpKind::OrOr         , prec: Precedence::P0 },
+            Kind::LessThen      => BinaryOpDef{  kind : AstBinaryOpKind::NotEqual     , prec: Precedence::P1 },
+            Kind::GreaterEqual  => BinaryOpDef{  kind : AstBinaryOpKind::GreaterEqual , prec: Precedence::P1 },
+            Kind::NotEqual      => BinaryOpDef{  kind : AstBinaryOpKind::LessThen     , prec: Precedence::P1 },
+            Kind::EqualsEquals  => BinaryOpDef{  kind : AstBinaryOpKind::EqualsEquals , prec: Precedence::P1 },
+            Kind::Plus          => BinaryOpDef{  kind : AstBinaryOpKind::Plus         , prec: Precedence::P2 },
+            Kind::Minus         => BinaryOpDef{  kind : AstBinaryOpKind::Minus        , prec: Precedence::P2 },
+            Kind::Mult          => BinaryOpDef{  kind : AstBinaryOpKind::Mult         , prec: Precedence::P3 },
             Kind::Name |
             Kind::Number |
             Kind::OpenParen |
@@ -428,7 +443,13 @@ impl<'a> Parser<'a> {
 
             match &token.token_kind {
                 // groep binary operators?
-                Kind::Less |
+                Kind::AndAnd |
+                Kind::OrOr   |
+
+                Kind::LessThen |
+                Kind::GreaterEqual |
+                Kind::NotEqual |
+                Kind::EqualsEquals |
                 Kind::Mult |
                 Kind::Plus |
                 Kind::Minus => {
@@ -545,12 +566,17 @@ impl<'a> Parser<'a> {
                 | Kind::OpenCurly
                 | Kind::CloseCurly
                 | Kind::Colon
+                | Kind::Comma
                 | Kind::Equals
                 | Kind::Plus
                 | Kind::Minus
                 | Kind::Mult
-                | Kind::Less
-                | Kind::Comma
+                | Kind::AndAnd
+                | Kind::EqualsEquals
+                | Kind::GreaterEqual
+                | Kind::NotEqual
+                | Kind::OrOr
+                | Kind::LessThen
                 | Kind::Semicolon => {
                     // fallthrough, parse as an expression with a semicolon
                 }

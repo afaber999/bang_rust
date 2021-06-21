@@ -680,7 +680,7 @@ impl<'a> BasmCompiler<'a> {
             }
 
             // end of memory location into heap_base variable address
-            let mut addr_bts = self.memory.len().to_ne_bytes();
+            let addr_bts = self.memory.len().to_ne_bytes();
             self.memory[ var.addr .. var.addr + addr_bts.len()].clone_from_slice(&addr_bts);
         }
     }

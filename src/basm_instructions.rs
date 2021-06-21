@@ -191,15 +191,6 @@ pub fn map_binary_op_instructions( inp_type : AstTypes, kind : AstBinaryOpKind )
                 AstTypes::BOOL => None,
             }
         },
-        AstBinaryOpKind::Less => {
-            match inp_type {
-                AstTypes::I64 => Some( (BasmInstruction::LTI, AstTypes::BOOL) ),
-                AstTypes::U8  => Some( (BasmInstruction::LTU, AstTypes::BOOL) ),
-                AstTypes::PTR => Some( (BasmInstruction::LTU, AstTypes::BOOL) ),
-                AstTypes::VOID |
-                AstTypes::BOOL => None,
-            }
-        },
         AstBinaryOpKind::Mult => {
             match inp_type {
                 AstTypes::I64 => Some( (BasmInstruction::MULTI, AstTypes::I64) ),
@@ -209,6 +200,64 @@ pub fn map_binary_op_instructions( inp_type : AstTypes, kind : AstBinaryOpKind )
                 AstTypes::BOOL => None,
             }
         },
+
+        AstBinaryOpKind::AndAnd => {
+            match inp_type {
+                AstTypes::I64  |
+                AstTypes::U8   |
+                AstTypes::PTR  |
+                AstTypes::VOID => None,
+                AstTypes::BOOL => Some( (BasmInstruction::ANDB, AstTypes::BOOL) ),
+            }
+        },
+
+        AstBinaryOpKind::OrOr => {
+            match inp_type {
+                AstTypes::I64  |
+                AstTypes::U8   |
+                AstTypes::PTR  |
+                AstTypes::VOID => None,
+                AstTypes::BOOL => Some( (BasmInstruction::ORB, AstTypes::BOOL) ),
+            }
+        },
+
+        AstBinaryOpKind::LessThen => {
+            match inp_type {
+                AstTypes::I64 => Some( (BasmInstruction::LTI, AstTypes::BOOL) ),
+                AstTypes::U8  => Some( (BasmInstruction::LTU, AstTypes::BOOL) ),
+                AstTypes::PTR => Some( (BasmInstruction::LTU, AstTypes::BOOL) ),
+                AstTypes::VOID |
+                AstTypes::BOOL => None,
+            }
+        },
+        AstBinaryOpKind::EqualsEquals => {
+            match inp_type {
+                AstTypes::I64 => Some( (BasmInstruction::EQI, AstTypes::BOOL) ),
+                AstTypes::U8  => Some( (BasmInstruction::EQU, AstTypes::BOOL) ),
+                AstTypes::PTR => Some( (BasmInstruction::EQU, AstTypes::BOOL) ),
+                AstTypes::VOID |
+                AstTypes::BOOL => None,
+            }
+        },
+        AstBinaryOpKind::GreaterEqual => {
+            match inp_type {
+                AstTypes::I64 => Some( (BasmInstruction::GEI, AstTypes::BOOL) ),
+                AstTypes::U8  => Some( (BasmInstruction::GEU, AstTypes::BOOL) ),
+                AstTypes::PTR => Some( (BasmInstruction::GEU, AstTypes::BOOL) ),
+                AstTypes::VOID |
+                AstTypes::BOOL => None,
+            }
+        },
+        AstBinaryOpKind::NotEqual => {
+            match inp_type {
+                AstTypes::I64 => Some( (BasmInstruction::NEI, AstTypes::BOOL) ),
+                AstTypes::U8  => Some( (BasmInstruction::NEU, AstTypes::BOOL) ),
+                AstTypes::PTR => Some( (BasmInstruction::NEU, AstTypes::BOOL) ),
+                AstTypes::VOID |
+                AstTypes::BOOL => None,
+            }
+        },        
+
     }
 }
 
