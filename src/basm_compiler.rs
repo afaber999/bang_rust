@@ -113,6 +113,8 @@ impl<'a> BasmCompiler<'a> {
             arity);
     }
 
+    /// # Panics
+    /// This function wil panic if the file can't be written to disk
     pub fn write_to_bm(&self, file_path: &Path) {
 
         const BM_FILE_MAGIC: u32 = 0x_A401_6D62;
@@ -654,6 +656,9 @@ impl<'a> BasmCompiler<'a> {
 
         let zero_vec = vec![0; var_size];
         let (addr, _) = self.push_buffer_to_memory(&zero_vec);
+
+        #[allow(clippy::cast_possible_truncation)]
+        #[allow(clippy::cast_sign_loss)]
         let addr = addr as BMaddr;
 
         self.global_vars.insert(
