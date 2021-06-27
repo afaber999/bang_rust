@@ -1,6 +1,6 @@
 use crate::basm_instructions::{BasmInstruction, basm_instruction_opcode, get_type_read_instruction, get_type_size, get_type_write_instruction, map_binary_op_instructions};
 use crate::location::{fmt_loc, fmt_loc_err, FileNameLocations, Location};
-use crate::parser::{AstBinaryOp, AstBlock, AstExpr, AstExprKind, AstFunCall, AstIfStatement, AstModule, AstProcDef, AstStatement, AstTop, AstTypes, AstVarAssign, AstVarDef, AstVarRead, AstWhileStatement, name_to_type, type_to_str};
+use crate::ast::{AstBinaryOp, AstBlock, AstExpr, AstExprKind, AstFunCall, AstIfStatement, AstModule, AstProcDef, AstStatement, AstTop, AstTypes, AstVarAssign, AstVarDef, AstVarRead, AstWhileStatement, name_to_type, type_to_str};
 use std::collections::HashMap;
 use std::path::Path;
 

@@ -1,5 +1,5 @@
 
-use crate::parser::{AstBinaryOpKind, AstTypes};
+use crate::ast::{AstBinaryOpKind, AstTypes};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BasmInstruction {
