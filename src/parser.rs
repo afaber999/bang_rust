@@ -389,6 +389,11 @@ impl<'a> Parser<'a> {
                         return self.parse_while();
                     }
 
+                    // check if statement, return no semicolon needed
+                    if self.lexer.is_keyword(&token, "var") {
+                        return AstStatement::VarDef( self.parse_var_def() );
+                    }
+
                     // check var assignment statement, semicoln parsed inside var_assign
                     if let Some(next_token) = self.lexer.peek(1) {
                         if next_token.token_kind == Kind::Equals {

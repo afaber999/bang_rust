@@ -582,6 +582,7 @@ impl<'a> BasmCompiler<'a> {
             AstStatement::While(while_stmt) => {
                 self.compile_while_statement(while_stmt);
             }
+            AstStatement::VarDef(_) => todo!(),
         }
     }
 

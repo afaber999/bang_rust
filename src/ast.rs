@@ -23,6 +23,7 @@ pub enum AstStatement {
     If(AstIfStatement),
     VarAssign(AstVarAssign),
     While(AstWhileStatement),
+    VarDef(AstVarDef),
 }
 
 #[derive(Debug, Clone)]
