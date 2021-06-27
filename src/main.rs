@@ -1,5 +1,6 @@
 
 //#![allow(clippy::clippy::shadow_unrelated)]
+//#![warn(missing_docs)]
 
 
 #![warn(clippy::pedantic)]
@@ -7,26 +8,13 @@
 #![allow(clippy::shadow_unrelated)]
 #![allow(clippy::must_use_candidate)]
 
-
-//#![warn(missing_docs)]
-
 use anyhow::Result;
 use std::{convert::From, env, panic, path::PathBuf};
 
-#[macro_use]
-pub mod errors;
-pub mod precedence;
-pub mod basm_compiler;
-pub mod basm_instructions;
-pub mod lexer;
-pub mod location;
-pub mod parser;
-pub mod token;
-
-use basm_compiler::BasmCompiler;
-use lexer::Lexer;
-use location::FileNameLocations;
-use parser::Parser;
+use bang::basm_compiler::BasmCompiler;
+use bang::lexer::Lexer;
+use bang::location::FileNameLocations;
+use bang::parser::Parser;
 
 fn usage(program_name: &str) {
     println!("Usage: {} [OPTIONS] <input.bang>", program_name);

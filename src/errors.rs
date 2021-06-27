@@ -1,3 +1,19 @@
+use crate::location::Location;
+
+pub enum Error {
+    ExpectedTokenReachedEos(Location),
+    InternalError(String),
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Error::ExpectedTokenReachedEos(_) => { write!(f, "ERROR ") },
+            Error::InternalError(_) => todo!(),
+        }
+    }
+}
+
 /// This is an implementation detail and *should not* be called directly!
 #[doc(hidden)]
 pub fn error_abort__(msg: &str) -> ! {
