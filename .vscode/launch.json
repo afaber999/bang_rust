@@ -19,7 +19,7 @@
                     "kind": "bin"
                 }
             },
-            "args": [".\\examples\\test.bang"],
+            "args": [".\\examples\\test.bang", "-s 72"],
             "cwd": "${workspaceFolder}"
         },
         {

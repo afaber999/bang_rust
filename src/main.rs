@@ -1,8 +1,6 @@
 
 //#![allow(clippy::clippy::shadow_unrelated)]
 //#![warn(missing_docs)]
-
-
 #![warn(clippy::pedantic)]
 #![allow(clippy::non_ascii_literal)]
 #![allow(clippy::shadow_unrelated)]
@@ -20,6 +18,7 @@ fn usage(program_name: &str) {
     println!("Usage: {} [OPTIONS] <input.bang>", program_name);
     println!("OPTIONS:");
     println!("    -o <output>                       Provide output path");
+    println!("    -s <stack_size>                   Provide stack size in bytes");
     println!("    -h                                Print this help to stdout");
 }
 
@@ -39,6 +38,7 @@ fn main() -> Result<()> {
     let program_name = arg_it.next().expect("first argument");
     let mut input_file_path = PathBuf::default();
     let mut output_file_path = PathBuf::default();
+    let mut stack_size = 72;
 
     while let Some(arg) = arg_it.next() {
         match arg.as_ref() {
@@ -51,6 +51,17 @@ fn main() -> Result<()> {
                     return Ok(());
                 }
             }
+            "-s" => {
+                println!("STACK SIZE ");
+                if let Some(name) = arg_it.next() {
+                    println!( "ARG {} ", &name);
+                    stack_size = name.parse().unwrap();
+                } else {
+                    usage(&program_name);
+                    eprintln!("ERROR: no value is provided for flag -s ");
+                    return Ok(());
+                }
+            },
             "-h" => usage(&program_name),
             _ => input_file_path = PathBuf::from(arg),
         }
@@ -84,7 +95,7 @@ fn main() -> Result<()> {
 
     let mut basm_compiler = BasmCompiler::new(&filename_locations);
 
-    basm_compiler.compile(&module, "main");
+    basm_compiler.compile(&module, "main", stack_size);
     basm_compiler.write_to_bm(&output_file_path);
 
     //basm_compiler.save(&output_file_path);

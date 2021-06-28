@@ -103,6 +103,7 @@ pub enum AstTypes {
 pub struct AstVarDef {
     pub loc: Location,
     pub name: String,
+    pub init_expr : Option<AstExpr>,
     pub var_type: AstTypes,
 }
 

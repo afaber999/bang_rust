@@ -510,10 +510,18 @@ impl<'a> Parser<'a> {
 
         // expect semicolon
         let _ = self.lexer.expect_token_next(Kind::Semicolon);
+        let mut init_expr = None;
+
+        if let Some(next_token) = self.lexer.peek(0) {
+            if next_token.token_kind == Kind::Equals {
+                init_expr = Some( self.parse_expr(Precedence::P0) );
+            }
+        }
 
         AstVarDef {
             loc,
             name,
+            init_expr,
             var_type,
         }
     }

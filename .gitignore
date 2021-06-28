@@ -2,4 +2,6 @@
 /basm_tools
 
 /examples/*.bm
+/examples/*.out
+
 

@@ -11,6 +11,8 @@
                 "run",
                 // "--release",
                 "--",
+                "-s",
+                "72",
                 ".\\examples\\test.bang",
             ],
             "group": {
