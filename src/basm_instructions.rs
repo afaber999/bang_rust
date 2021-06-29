@@ -194,7 +194,7 @@ pub fn map_binary_op_instructions( inp_type : AstTypes, kind : AstBinaryOpKind )
         AstBinaryOpKind::Mult => {
             match inp_type {
                 AstTypes::I64 => Some( (BasmInstruction::MULTI, AstTypes::I64) ),
-                AstTypes::U8  => Some( (BasmInstruction::MULTI, AstTypes::U8 ) ),
+                AstTypes::U8  => Some( (BasmInstruction::MULTU, AstTypes::U8 ) ),
                 AstTypes::PTR => Some( (BasmInstruction::MULTU, AstTypes::PTR) ),
                 AstTypes::VOID |
                 AstTypes::BOOL => None,

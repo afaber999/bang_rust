@@ -262,15 +262,15 @@ impl<'a> Parser<'a> {
 
     fn parse_expr(&mut self, prec : Precedence ) -> AstExpr {
 
-        // println!("---------- PARSE EXPR ");
+        //println!("---------- PARSE EXPR {:?}", prec);
 
         if prec == Precedence::PMax {
             return self.parse_primary_expr();
         }
 
-        let lhs = self.parse_expr( Precedence::next( prec ) );
+        let mut lhs = self.parse_expr( Precedence::next( prec ) );
 
-        if let Some(token) = self.lexer.peek(0) {
+        while let Some(token) = self.lexer.peek(0) {
             //let name = self.lexer.get_string(token.text_start, token.text_len);
             // println!(
             //     "EXPR: PEEKED TOKEN FOR EXPR {} Name: {}",
@@ -297,7 +297,7 @@ impl<'a> Parser<'a> {
                     // check if the precdedence of the operator
                     if bin_op_def.prec == prec {
                         self.lexer.extract_next();
-                        let rhs = self.parse_expr(prec);
+                        let rhs = self.parse_expr(Precedence::next( prec ));
     
                         let kind = AstExprKind::BinarayOp(AstBinaryOp {
                             loc: token.loc,
@@ -306,10 +306,12 @@ impl<'a> Parser<'a> {
                             rhs: Box::new(rhs),
                         });
     
-                        return AstExpr {
+                        lhs = AstExpr {
                             loc: token.loc,
                             kind,
                         };
+                    } else {
+                        break;
                     }
                 }
 
@@ -324,7 +326,7 @@ impl<'a> Parser<'a> {
                 | Kind::Colon
                 | Kind::Comma
                 | Kind::Equals => {
-                    // fallthrough
+                    break;
                 }
             }
         }
@@ -425,9 +427,11 @@ impl<'a> Parser<'a> {
             };
 
             // parse as exprssion with a semicolon
-            // println!("---------- PARSE STATMENT AS EXPRESSION ");
+            // println!("---------- PARSE STATMENT AS EXPRESSION -------");
             let stmt = AstStatement::Expr(self.parse_expr(Precedence::P0));
             self.lexer.expect_token_next(Kind::Semicolon);
+
+            // println!("STATEMENT AS EXPRESSION: {:?}", stmt);
             stmt
         } else {
             let loc_msg = fmt_loc_err(self.filename_locations, &self.lexer.get_location());
@@ -508,15 +512,18 @@ impl<'a> Parser<'a> {
 
         let var_type = self.parse_type();
 
-        // expect semicolon
-        let _ = self.lexer.expect_token_next(Kind::Semicolon);
         let mut init_expr = None;
 
         if let Some(next_token) = self.lexer.peek(0) {
+            // println!("CHECK VAR ASSIGNMENT ");
             if next_token.token_kind == Kind::Equals {
+                self.lexer.extract_next();
                 init_expr = Some( self.parse_expr(Precedence::P0) );
             }
         }
+
+        // expect semicolon
+        let _ = self.lexer.expect_token_next(Kind::Semicolon);
 
         AstVarDef {
             loc,

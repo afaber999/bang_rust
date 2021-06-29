@@ -628,7 +628,7 @@ impl<'a> BasmCompiler<'a> {
         &mut self,
         if_statement: &AstIfStatement,
     ) {
-        println!("Compile if instruction condition ");
+        // println!("Compile if instruction condition ");
         let compiled_cond = self.compile_expr(&if_statement.condition);
 
         let loc_msg = fmt_loc_err(self.filename_locations, &if_statement.loc);
@@ -719,11 +719,6 @@ impl<'a> BasmCompiler<'a> {
             self.get_compiled_var_by_name(&var_assign.name)
         {
             let var_type = compiled_var.def.var_type;
-
-            {
-                let loc_msg = fmt_loc_err(self.filename_locations, &var_assign.loc);
-                println!("compile_var_assign  {} {}", & compiled_var.def.name, loc_msg);
-            }
 
             self.compile_get_var_addr(&compiled_var);
             let compiled_expr = self.compile_expr(&var_assign.expr);
@@ -836,7 +831,7 @@ impl<'a> BasmCompiler<'a> {
         var_def: &AstVarDef,
         storage: VarStorageKind,
     ) {
-        println!("compile_var_def {} {:?}", &var_def.name, &storage);
+        // println!("compile_var_def {} {:?}", &var_def.name, &storage);
 
         // AF TODO add explicit check if type is known, now only checks
         // on type size
@@ -876,49 +871,73 @@ impl<'a> BasmCompiler<'a> {
             user_error!("ERROR: shadow variable: {}", shadow_var.def.name);
         }
 
-        // TODO(#476): global variables cannot be initialized at the moment
-        if var_def.init_expr.is_some() {
-            let loc_msg = fmt_loc_err(self.filename_locations, &var_def.loc);
-            user_error!(
-                "{} init variables not yet supported {}",
-                loc_msg,
-                var_def.name
-            );
-        }
-
         // addr depends on the storage type
-        let addr = match storage {
+        let compiled_var = match storage {
             VarStorageKind::Static => {
                 let zero_vec = vec![0; var_size];
                 let (addr, _) = self.push_buffer_to_memory(&zero_vec);
 
+                // TODO(#476): global variables cannot be initialized at the moment
+                if var_def.init_expr.is_some() {
+                    let loc_msg = fmt_loc_err(self.filename_locations, &var_def.loc);
+                    user_error!(
+                        "{} init variables not yet supported {}",
+                        loc_msg,
+                        var_def.name
+                    );
+                }
+
                 // #[allow(clippy::cast_possible_truncation)]
                 // #[allow(clippy::cast_sign_loss)]
-                addr as BMaddr
+                let compiled_var = CompiledVar {
+                    addr : addr as BMaddr,
+                    storage,
+                    def: var_def.clone(),
+                };
+                compiled_var
             },
             VarStorageKind::Stack => {
                 self.frame_size += var_size as i64;
-                // todo!() Init var
 
+                let compiled_var = CompiledVar {
+                    addr : self.frame_size as BMaddr,
+                    storage,
+                    def: var_def.clone(),
+                };
+
+                if let Some(init_expr) = &var_def.init_expr {
+
+                    self.compile_get_var_addr( &compiled_var);
+
+                    let compiled_expr = self.compile_expr(&init_expr);
+                    self.compile_typed_write( var_def.var_type, &var_def.loc );
+        
+                    if compiled_expr.expr_type != var_def.var_type {
+                        let loc_msg =
+                            fmt_loc_err(self.filename_locations, &var_def.loc);
+        
+                        user_error!(
+                            "{} cannot assign expression of type {:?} to variable {} of type {:?}",
+                            loc_msg,
+                            compiled_expr.expr_type,
+                            &var_def.name,
+                            var_def.var_type
+                        );
+                    }        
+                }                
                 // #[allow(clippy::cast_possible_truncation)]
                 // #[allow(clippy::cast_sign_loss)]
-                self.frame_size as BMaddr
+                compiled_var 
             },
         };
 
-        let compiled_var = CompiledVar {
-            addr,
-            storage,
-            def: var_def.clone(),
-        };
-
         // add variable to the current scope
-        let scopes = self.scopes.len();
+        //let scopes = self.scopes.len();
         if let Some(scope) = self.scopes.front_mut() {
-            println!(
-                "ADD VARIABLE {} to scope {}",
-                &compiled_var.def.name, scopes
-            );
+            // println!(
+            //     "add variable {} to scope {}",
+            //     &compiled_var.def.name, scopes
+            // );
             scope.add_compiled_var(var_def.name.clone(), compiled_var);
         } else {
             internal_error!("Epxected scope to store variable");

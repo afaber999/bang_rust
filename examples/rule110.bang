@@ -11,12 +11,6 @@ var state_next: i64;
 
 var display_base: ptr;
 
-var i: i64;
-var j: i64;
-
-var cell_ptr: ptr;
-var cell: u8;
-
 proc init() {
   # Init lookup table
   table_base = heap_base;
@@ -41,8 +35,10 @@ proc init() {
 }
 
 proc print_state_current() {
+  var cell_ptr: ptr;
+  var cell: u8;
 
-  i = 0;
+  var i: i64 = 0;
   while i < state_size {
     cell_ptr = states_base + cast(ptr, state_current * state_size + i);
     cell = load_ptr(u8, cell_ptr);
@@ -63,8 +59,12 @@ proc print_state_current() {
 }
 
 proc next_state() {
+  var cell_ptr: ptr;
+  var cell: u8;
+
   state_next = 1 - state_current;
-  i = 1;
+
+  var i: i64 = 1;
   while i < state_size - 1 {
     table_index = cast(u8, 0);
 
@@ -93,10 +93,11 @@ proc next_state() {
 
 proc main() {
   init();
-  j = 0;
-  while j < state_size - 2 {
+  var i: i64 = 0;
+  while i < state_size - 2 {
     print_state_current();
     next_state();
-    j = j + 1;
+    i = i + 1;
   }
 }
+
