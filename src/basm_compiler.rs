@@ -644,7 +644,10 @@ impl<'a> BasmCompiler<'a> {
         let jmp_no_if_op = self.basm_push_inst(BasmInstruction::JMPIf, 0) + 1;
         // println!("######### jmp_not_if_addr {} ", jmp_no_if_op);
 
+        self.push_scope();
         self.compile_block(&if_statement.then_block);
+        self.pop_scope();
+
 
         if let Some(else_block) = &if_statement.else_block {
             // add instruction to jump over else block
@@ -655,7 +658,9 @@ impl<'a> BasmCompiler<'a> {
             let jmp_addr = self.get_inst_addr() as BMword;
             self.program[jmp_no_if_op] = jmp_addr;
 
+            self.push_scope();
             self.compile_block(&else_block);
+            self.pop_scope();
 
             // fill in deferred address of jmp over else block
             let jmp_addr = self.get_inst_addr() as BMword;
@@ -698,8 +703,10 @@ impl<'a> BasmCompiler<'a> {
 
         self.basm_push_inst(BasmInstruction::NOT, 0);
         let end_while_jmp = self.basm_push_inst(BasmInstruction::JMPIf, 0) + 1;
-
+       
+        self.push_scope();
         self.compile_block(&while_statement.block);
+        self.pop_scope();
 
         self.basm_push_inst(
             BasmInstruction::JMP,
@@ -778,28 +785,27 @@ impl<'a> BasmCompiler<'a> {
 
     pub fn compile_block(
         &mut self,
-        block: &AstBlock,
-    ) {
+        block: &AstBlock) {
         // println!("compile_block ");
-        self.push_scope();
-
         let stmts = &block.statements;
 
         for stmt in stmts {
             self.compile_statement(&stmt)
         }
-
-        self.pop_scope();
     }
 
     fn get_inst_addr(&self) -> BMaddr {
         self.program.len() / 2
     }
 
+    fn compile_proc_params(
+        &mut self,
+        proc_def: &AstProcDef ) {
+    }
+
     fn compile_proc_def(
         &mut self,
-        proc_def: &AstProcDef,
-    ) {
+        proc_def: &AstProcDef ) {
         // println!("compile_proc_def ");
         let inst_addr = self.get_inst_addr();
         let name = proc_def.name.clone();

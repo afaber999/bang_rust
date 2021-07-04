@@ -84,10 +84,18 @@ pub struct AstBlock {
 }
 
 #[derive(Debug, Clone)]
+pub struct AstProcParam {
+    pub loc: Location,
+    pub param_name: String,
+    pub param_type: AstTypes,
+}
+
+#[derive(Debug, Clone)]
 pub struct AstProcDef {
     pub loc: Location,
     pub name: String,
     pub body: AstBlock,
+    pub params: Vec<AstProcParam>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, VariantCount)]

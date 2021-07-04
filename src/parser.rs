@@ -1,4 +1,5 @@
-use crate::{ast::{AstBinaryOp, AstBinaryOpKind, AstBlock, AstExpr, AstExprKind, AstFunCall, AstIfStatement, AstModule, AstProcDef, AstStatement, AstTop, AstTypes, AstVarAssign, AstVarDef, AstVarRead, AstWhileStatement, BinaryOpDef, name_to_type}, lexer::Lexer, location::{fmt_loc_err, FileNameLocations}, token::{Token, Kind}};
+
+use crate::{ast::{AstBinaryOp, AstBinaryOpKind, AstBlock, AstExpr, AstExprKind, AstFunCall, AstIfStatement, AstModule, AstProcDef, AstProcParam, AstStatement, AstTop, AstTypes, AstVarAssign, AstVarDef, AstVarRead, AstWhileStatement, BinaryOpDef, name_to_type}, lexer::Lexer, location::{fmt_loc_err, FileNameLocations}, token::{Token, Kind}};
 
 
 extern crate static_assertions as sa;
@@ -459,6 +460,61 @@ impl<'a> Parser<'a> {
         AstBlock { statements: stmts }
     }
 
+    fn parse_proc_params(&mut self) -> Vec<AstProcParam> {
+
+        println!("Parse proce ");
+
+        // open and close paren
+        let mut params = Vec::<AstProcParam>::new();
+
+        self.lexer.expect_token_next(Kind::OpenParen);
+
+        while let Some(next_token) = self.lexer.peek(0) {
+            println!("Parse proce token {:?} ", &next_token);
+
+            match next_token.token_kind {
+                Kind::CloseParen => {
+                    self.lexer.expect_token_next(Kind::CloseParen);
+                    return params;
+                },
+                Kind::Name => {
+                    // expect name of var token
+                    let token = self.lexer.expect_token_next(Kind::Name);
+                    let param_name = self.lexer.get_string(token.text_start, token.text_len);
+                    // expect colon
+                    self.lexer.expect_token_next(Kind::Colon);
+
+                    // expect type
+                    let param_type = self.parse_type();
+
+                    params.push(AstProcParam {
+                        loc: token.loc,
+                        param_name,
+                        param_type,
+                    })
+                },
+                Kind::Comma => {
+                    self.lexer.expect_token_next(Kind::Comma);
+                    // TODO CHECK FOR DOUBLE COMMA's
+                },
+                _ => {
+                    let loc_msg = fmt_loc_err(self.filename_locations, &self.lexer.get_location());
+                    user_error!(
+                        "{} unexpected token {} ",
+                        loc_msg,
+                        Token::kind_name(next_token.token_kind)
+                    );                    
+                }
+            }
+        }
+
+        let loc_msg = fmt_loc_err(self.filename_locations, &self.lexer.get_location());
+        user_error!(
+            "{} expected ), reached end of file",
+            loc_msg
+        );
+    }
+
     fn parse_proc_def(&mut self) -> AstProcDef {
         // println!("---------- PARSE PROC DEF ");
 
@@ -470,14 +526,12 @@ impl<'a> Parser<'a> {
         let token = self.lexer.expect_token_next(Kind::Name);
         let name = self.lexer.get_string(token.text_start, token.text_len);
 
-        // open and close paren
-        self.lexer.expect_token_next(Kind::OpenParen);
-
-        self.lexer.expect_token_next(Kind::CloseParen);
+        let params = self.parse_proc_params();
 
         let body = self.parse_curly_block();
 
-        AstProcDef { loc, name, body }
+
+        AstProcDef { loc, name, body, params }
     }
 
     fn parse_type(&mut self) -> AstTypes {
