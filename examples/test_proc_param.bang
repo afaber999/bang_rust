@@ -1,0 +1,22 @@
+
+var heap_base : ptr;
+
+proc msg_box(msg:ptr, msg_size:i64) {
+  write("------------------------");
+  write_ptr(msg, msg_size);
+  write("------------------------");
+}
+
+
+proc main() {
+  var n:i64 = 26;
+  var i:i64 = 0;
+  while i < n{
+    store_ptr( u8, heap_base + cast(ptr, i), cast(u8, i + 65));
+    i = i+ 1;
+  }
+
+  msg_box( heap_base, n);
+
+  write("Hello \n");
+}
