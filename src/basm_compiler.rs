@@ -212,9 +212,8 @@ impl<'a> BasmCompiler<'a> {
             return;
         }
 
-        let loc_msg = fmt_loc_err(&func_call.loc);
         user_error!("{} Invalid number of function arguments for function {}, got {} arguments, expected {}",
-            loc_msg,
+            &func_call.loc.fmt_err(),
             &func_call.name,
             func_call.args.len(),
             arity);
@@ -270,7 +269,6 @@ impl<'a> BasmCompiler<'a> {
         &mut self,
         binary_op: &'a AstBinaryOp,
     ) -> AstTypes {
-        let loc_msg = fmt_loc_err(&binary_op.loc);
 
         let compiled_lhs = self.compile_expr(binary_op.lhs.as_ref());
         let compiled_rhs = self.compile_expr(binary_op.rhs.as_ref());
@@ -278,7 +276,7 @@ impl<'a> BasmCompiler<'a> {
         if compiled_lhs.expr_type != compiled_rhs.expr_type {
             user_error!(
                 "{} binary operation {:?} not supported for LHS type {} with RHS type {}",
-                loc_msg,
+                &binary_op.loc.fmt_err(),
                 binary_op.kind,
                 type_to_str( compiled_lhs.expr_type),
                 type_to_str( compiled_rhs.expr_type));
@@ -296,7 +294,7 @@ impl<'a> BasmCompiler<'a> {
 
         user_error!(
             "{} binary operation {:?} not available for type: {}",
-            loc_msg,
+            &binary_op.loc.fmt_err(),
             binary_op.kind,
             type_to_str(compiled_lhs.expr_type)
         );
@@ -350,11 +348,9 @@ impl<'a> BasmCompiler<'a> {
                     self.basm_push_inst(BasmInstruction::CALL, proc_addr);
                     self.compile_pop_frame();
                 } else {
-                    let loc_msg =
-                        fmt_loc_err(&func_call.loc);
                     user_error!(
                         "{} Can't find definition for function name  {}",
-                        loc_msg,
+                        &func_call.loc.fmt_err(),
                         &func_call.name
                     );
                 }
@@ -415,19 +411,16 @@ impl<'a> BasmCompiler<'a> {
                 self.basm_push_inst(BasmInstruction::PUSH, var_addr as BMword);
                 AstTypes::PTR
             } else {
-                let loc_msg =
-                    fmt_loc_err(&var_read.loc);
                 user_error!(
                     "{} Can't read variable name {}",
-                    loc_msg,
+                    &var_read.loc.fmt_err(),
                     &var_read.name
                 );
             }
         } else {
-            let loc_msg = fmt_loc_err(&func_call.loc);
             user_error!(
                 "{} Expected variable name of the argument of the ptr function",
-                loc_msg
+                &func_call.loc.fmt_err(),
             );
         }
     }
@@ -441,15 +434,13 @@ impl<'a> BasmCompiler<'a> {
                 return ptr_type;
             }
 
-            let loc_msg = fmt_loc_err(&expr.loc);
             user_error!(
                 "{} is not a valid type {}",
-                loc_msg,
+                &expr.loc.fmt_err(),
                 &var_read_type.name
             );
         }
-        let loc_msg = fmt_loc_err(&expr.loc);
-        user_error!("{} Expected type name", loc_msg);
+        user_error!("{} Expected type name", &expr.loc.fmt_err());
     }
 
     fn type_check_expr(
@@ -460,10 +451,9 @@ impl<'a> BasmCompiler<'a> {
         if compiled_expr.expr_type == expected_type {
             return;
         }
-        let loc_msg = fmt_loc_err(&compiled_expr.loc);
         user_error!(
             "{} expected type {} but got type {}",
-            loc_msg,
+            &compiled_expr.loc.fmt_err(),
             type_to_str(expected_type),
             type_to_str(compiled_expr.expr_type)
         );
@@ -518,10 +508,9 @@ impl<'a> BasmCompiler<'a> {
             return to_type;
         }
 
-        let loc_msg = fmt_loc_err(&arg1.loc);
         user_error!(
             "{} can't convert value of type {} to {}",
-            loc_msg,
+            &arg1.loc.fmt_err(),
             type_to_str(from_type),
             type_to_str(to_type)
         );
@@ -587,19 +576,16 @@ impl<'a> BasmCompiler<'a> {
             return var_type;
         }
 
-        let loc_msg = fmt_loc_err(&var_read.loc);
-        user_error!("{} Can't read variable name {}", loc_msg, &var_read.name);
+        user_error!("{} Can't read variable name {}",&var_read.loc.fmt_err(), &var_read.name);
     }
 
 
     fn compile_typed_read( &mut self, read_type: AstTypes, loc : &'a Location) {
         let instr = get_type_read_instruction(read_type);
         if BasmInstruction::NOP == instr {
-            let loc_msg =
-                fmt_loc_err(&loc);
             user_error!(
                 "{} can't read type {}",
-                loc_msg,
+                &loc.fmt_err(),
                 type_to_str(read_type)
             );
         }
@@ -609,11 +595,9 @@ impl<'a> BasmCompiler<'a> {
     fn compile_typed_write( &mut self, write_type: AstTypes, loc : &'a Location) {
         let instr = get_type_write_instruction(write_type);
         if BasmInstruction::NOP == instr {
-            let loc_msg =
-                fmt_loc_err(&loc);
             user_error!(
                 "{} can't assign to type {}",
-                loc_msg,
+                &loc.fmt_err(),
                 type_to_str(write_type)
             );
         }
@@ -628,11 +612,10 @@ impl<'a> BasmCompiler<'a> {
         // println!("Compile if instruction condition ");
         let compiled_cond = self.compile_expr(&if_statement.condition);
 
-        let loc_msg = fmt_loc_err(&if_statement.loc);
         if compiled_cond.expr_type == AstTypes::VOID {
             user_error!(
                 "{} condition can't be of type {:?} in the if-else statement",
-                loc_msg,
+                &compiled_cond.loc.fmt_err(),
                 compiled_cond.expr_type
             );
         }
@@ -688,12 +671,10 @@ impl<'a> BasmCompiler<'a> {
         // println!("Compile while instruction condition ");
         let compiled_cond = self.compile_expr(&while_statement.condition);
 
-        let loc_msg =
-            fmt_loc_err(&while_statement.loc);
         if compiled_cond.expr_type == AstTypes::VOID {
             user_error!(
                 "{} condition can't be of type {:?} in the while statement",
-                loc_msg,
+                &while_statement.loc.fmt_err(),
                 compiled_cond.expr_type
             );
         }
@@ -729,12 +710,9 @@ impl<'a> BasmCompiler<'a> {
             self.compile_typed_write( var_type, &var_assign.loc );
 
             if compiled_expr.expr_type != var_type {
-                let loc_msg =
-                    fmt_loc_err(&var_assign.loc);
-
                 user_error!(
                     "{} cannot assign expression of type {:?} to variable {} of type {:?}",
-                    loc_msg,
+                    &var_assign.loc.fmt_err(),
                     compiled_expr.expr_type,
                     &var_assign.name,
                     var_type
@@ -744,10 +722,9 @@ impl<'a> BasmCompiler<'a> {
             return;
         }
 
-        let loc_msg = fmt_loc_err(&var_assign.loc);
         user_error!(
             "{} cannot assign non-existing variable {}",
-            loc_msg,
+            &var_assign.loc.fmt_err(),
             &var_assign.name
         );
     }
@@ -810,10 +787,9 @@ impl<'a> BasmCompiler<'a> {
 
         // check if name already exist
         if let Some(existing_proc) = self.procedures.get(&name) {
-            let loc_msg = fmt_loc_err(&proc_def.loc);
             user_error!(
                 "{} procedure with name {} is already defined at {}",
-                loc_msg,
+                &proc_def.loc.fmt_err(),
                 &name,
                 fmt_loc(&existing_proc.def.loc)
             );
@@ -841,10 +817,9 @@ impl<'a> BasmCompiler<'a> {
         let var_size = get_type_size(var_def.var_type);
 
         if var_size == 0 {
-            let loc_msg = fmt_loc_err(&var_def.loc);
             user_error!(
                 "{} definining a variable of type {} is not allowed",
-                loc_msg,
+                &var_def.loc.fmt_err(),
                 type_to_str(var_def.var_type)
             );
         }
@@ -852,27 +827,24 @@ impl<'a> BasmCompiler<'a> {
         // check if var already exists
         let scope = self.scopes.front().expect("Internal error, expect scope");
 
-        if let Some(existing_var) =
-            self.scope_get_compiled_var_by_name(&scope, &var_def.name)
-        {
-            let existing_loc_msg =
-                fmt_loc_err(&existing_var.def.loc);
-            let loc_msg = fmt_loc_err(&var_def.loc);
-            user_error!(
-                "{} variable with name {} is previously defined overhere {}",
-                loc_msg,
-                &var_def.name,
-                existing_loc_msg
-            );
-        }
+        // if let Some(existing_var) =
+        //     self.scope_get_compiled_var_by_name(&scope, &var_def.name)
+        // {
+        //     user_error!(
+        //         "{} variable with name {} is previously defined overhere {}",
+        //         &var_def.loc.fmt_err(),
+        //         &var_def.name,
+        //         &existing_var.def.loc.fmt_err(),
+        //     );
+        // }
 
         // TODO(#480): bang does not warn about unused variables
 
         // Shadowed Var Warning
-        if let Some(shadow_var) = self.get_compiled_var_by_name(&var_def.name) {
-            // AF TODO for now make it an error
-            user_error!("ERROR: shadow variable: {}", shadow_var.def.name);
-        }
+        // if let Some(shadow_var) = self.get_compiled_var_by_name(&var_def.name) {
+        //     // AF TODO for now make it an error
+        //     user_error!("ERROR: shadow variable: {}", shadow_var.def.name);
+        // }
 
         // addr depends on the storage type
         let compiled_var = match storage {
@@ -882,10 +854,9 @@ impl<'a> BasmCompiler<'a> {
 
                 // TODO(#476): global variables cannot be initialized at the moment
                 if var_def.init_expr.is_some() {
-                    let loc_msg = fmt_loc_err(&var_def.loc);
                     user_error!(
                         "{} init variables not yet supported {}",
-                        loc_msg,
+                        &var_def.loc.fmt_err(),
                         var_def.name
                     );
                 }
@@ -916,12 +887,9 @@ impl<'a> BasmCompiler<'a> {
                     self.compile_typed_write( var_def.var_type, &var_def.loc );
         
                     if compiled_expr.expr_type != var_def.var_type {
-                        let loc_msg =
-                            fmt_loc_err(&var_def.loc);
-        
                         user_error!(
                             "{} cannot assign expression of type {:?} to variable {} of type {:?}",
-                            loc_msg,
+                            &var_def.loc.fmt_err(),
                             compiled_expr.expr_type,
                             &var_def.name,
                             var_def.var_type
@@ -969,11 +937,9 @@ impl<'a> BasmCompiler<'a> {
     ) {
         if let Some(var) = self.get_compiled_var_by_name(heap_base_name) {
             if var.def.var_type != AstTypes::PTR {
-                let loc_msg =
-                    fmt_loc_err(&var.def.loc);
                 user_error!(
                     "{} Heap base variable named {} needs to be of type  type {} but got type {}",
-                    loc_msg,
+                    &var.def.loc.fmt_err(),
                     &heap_base_name,
                     type_to_str(AstTypes::PTR),
                     type_to_str(var.def.var_type)
@@ -1006,10 +972,9 @@ impl<'a> BasmCompiler<'a> {
                 col: 0,
                 filename: "",
             };
-            let loc_msg = fmt_loc_err(&loc);
             user_error!(
                 "{} can't find entry procedure with {}",
-                loc_msg,
+                &loc.fmt_err(),
                 entry_name
             );
         }

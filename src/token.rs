@@ -45,7 +45,7 @@ impl<'a> Token<'a> {
             token_kind,
             text_start,
             text_len,
-            loc: loc,
+            loc,
         }
     }
 

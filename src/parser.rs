@@ -33,8 +33,7 @@ impl<'a> Parser<'a> {
                 if i + 1 >= last_index {
                     let mut loc = token.loc;
                     loc.col += i + 1;
-                    let loc_msg = fmt_loc_err(&token.loc);
-                    user_error!("{} unfinished string literal escape sequence", loc_msg);
+                    user_error!("{} unfinished string literal escape sequence",&loc.fmt_err());
                 }
 
                 let ch = self.lexer.get_char(i + 1);
@@ -48,8 +47,7 @@ impl<'a> Parser<'a> {
                     _ => {
                         let mut loc = token.loc;
                         loc.col += i + 2;
-                        let loc_msg = fmt_loc_err(&token.loc);
-                        user_error!("{} unknown escape character  '{}'", loc_msg, ch);
+                        user_error!("{} unknown escape character  '{}'", &loc.fmt_err(), ch);
                     }
                 }
                 i += 2;
@@ -175,9 +173,7 @@ impl<'a> Parser<'a> {
                             kind: AstExprKind::LitInt(ivalue),
                         };
                     };
-
-                    let loc_msg = fmt_loc_err(&token.loc);
-                    user_error!("{} can't convert number {} to i64", loc_msg, &name);
+                    user_error!("{} can't convert number {} to i64", &token.loc.fmt_err(), &name);
                 }
                 Kind::Literal => {
                     let literal = self.parse_string_literal();
@@ -208,20 +204,17 @@ impl<'a> Parser<'a> {
                 | Kind::Minus
                 | Kind::Mult
                 | Kind::Semicolon => {
-                    let loc_msg = fmt_loc_err(&token.loc);
                     user_error!(
                         "{} primary expression for token kind {} doesn't exist",
-                        loc_msg,
+                        &token.loc.fmt_err(),
                         Token::kind_name(token.token_kind)
                     );
                 }
             };
-        }
-        
-        let loc_msg = fmt_loc_err(&self.lexer.get_location());
+        }        
         user_error!(
             "{} expected primary expression, reached end of file",
-            loc_msg
+            &self.lexer.get_location().fmt_err()
         );
     }
 
@@ -433,8 +426,7 @@ impl<'a> Parser<'a> {
             // println!("STATEMENT AS EXPRESSION: {:?}", stmt);
             stmt
         } else {
-            let loc_msg = fmt_loc_err(&self.lexer.get_location());
-            user_error!("{} expected statement, reached end of file", loc_msg);
+            user_error!("{} expected statement, reached end of file", &self.lexer.get_location().fmt_err());
         }
     }
 
@@ -496,20 +488,18 @@ impl<'a> Parser<'a> {
                     // TODO CHECK FOR DOUBLE COMMA's
                 },
                 _ => {
-                    let loc_msg = fmt_loc_err(&self.lexer.get_location());
                     user_error!(
                         "{} unexpected token {} ",
-                        loc_msg,
+                        &self.lexer.get_location().fmt_err(),
                         Token::kind_name(next_token.token_kind)
                     );                    
                 }
             }
         }
 
-        let loc_msg = fmt_loc_err(&self.lexer.get_location());
         user_error!(
             "{} expected ), reached end of file",
-            loc_msg
+            &self.lexer.get_location().fmt_err()
         );
     }
 
@@ -543,9 +533,7 @@ impl<'a> Parser<'a> {
             return type_kind;
         }
 
-        let loc_msg = fmt_loc_err(&self.lexer.get_location());
-
-        user_error!("{} unknown file type {}", loc_msg, &type_name);
+        user_error!("{} unknown file type {}",&self.lexer.get_location().fmt_err(), &type_name);
     }
 
     fn parse_var_def(&mut self) -> AstVarDef<'a> {
@@ -610,14 +598,12 @@ impl<'a> Parser<'a> {
             return AstTop::VarDef(self.parse_var_def());
         }
 
-        let loc_msg = fmt_loc_err(&token.loc);
-
-        // the code below currently expects 2 top level variant
+        // the code below currently expects 2 top level variants
         // force compiler error when adding new variant
         sa::const_assert!(AstTop::VARIANT_COUNT == 2);
         user_error!(
             "{} expected var or proc, got {} ",
-            loc_msg,
+            &token.loc.fmt_err(),
             Token::kind_name(token.token_kind)
         );
     }
@@ -637,4 +623,3 @@ impl<'a> Parser<'a> {
         self.parse_module()
     }
 }
-
