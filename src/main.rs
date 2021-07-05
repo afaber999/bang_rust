@@ -11,7 +11,6 @@ use std::{convert::From, env, panic, path::PathBuf};
 
 use bang::basm_compiler::BasmCompiler;
 use bang::lexer::Lexer;
-use bang::location::FileNameLocations;
 use bang::parser::Parser;
 
 fn usage(program_name: &str) {
@@ -32,7 +31,6 @@ fn main() -> Result<()> {
         std::process::exit(-1);
     }));
 
-    let filename_locations = FileNameLocations::new();
 
     let mut arg_it = env::args();
     let program_name = arg_it.next().expect("first argument");
@@ -89,11 +87,11 @@ fn main() -> Result<()> {
     //     println!("{}", line?);
 
     // }
-    let lexer = Lexer::new(&input_file, input_file_name, &filename_locations);
-    let mut parser = Parser::new(lexer, &filename_locations);
+    let lexer = Lexer::new(&input_file, &input_file_name);
+    let mut parser = Parser::new(lexer);
     let module = parser.parse();
 
-    let mut basm_compiler = BasmCompiler::new(&filename_locations);
+    let mut basm_compiler = BasmCompiler::new();
 
     basm_compiler.compile(&module, "main", stack_size);
     basm_compiler.write_to_bm(&output_file_path);

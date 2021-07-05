@@ -1,5 +1,5 @@
 
-use crate::{ast::{AstBinaryOp, AstBinaryOpKind, AstBlock, AstExpr, AstExprKind, AstFunCall, AstIfStatement, AstModule, AstProcDef, AstProcParam, AstStatement, AstTop, AstTypes, AstVarAssign, AstVarDef, AstVarRead, AstWhileStatement, BinaryOpDef, name_to_type}, lexer::Lexer, location::{fmt_loc_err, FileNameLocations}, token::{Token, Kind}};
+use crate::{ast::{AstBinaryOp, AstBinaryOpKind, AstBlock, AstExpr, AstExprKind, AstFunCall, AstIfStatement, AstModule, AstProcDef, AstProcParam, AstStatement, AstTop, AstTypes, AstVarAssign, AstVarDef, AstVarRead, AstWhileStatement, BinaryOpDef, name_to_type}, lexer::Lexer, location::{fmt_loc_err}, token::{Token, Kind}};
 
 
 extern crate static_assertions as sa;
@@ -8,14 +8,12 @@ use crate::precedence::Precedence;
 #[derive(Debug)]
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
-    filename_locations: &'a FileNameLocations,
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(lexer: Lexer<'a>, filename_locations: &'a FileNameLocations) -> Self {
+    pub fn new(lexer: Lexer<'a>) -> Self {
         Self {
             lexer,
-            filename_locations,
         }
     }
 
@@ -35,7 +33,7 @@ impl<'a> Parser<'a> {
                 if i + 1 >= last_index {
                     let mut loc = token.loc;
                     loc.col += i + 1;
-                    let loc_msg = fmt_loc_err(self.filename_locations, &token.loc);
+                    let loc_msg = fmt_loc_err(&token.loc);
                     user_error!("{} unfinished string literal escape sequence", loc_msg);
                 }
 
@@ -50,7 +48,7 @@ impl<'a> Parser<'a> {
                     _ => {
                         let mut loc = token.loc;
                         loc.col += i + 2;
-                        let loc_msg = fmt_loc_err(self.filename_locations, &token.loc);
+                        let loc_msg = fmt_loc_err(&token.loc);
                         user_error!("{} unknown escape character  '{}'", loc_msg, ch);
                     }
                 }
@@ -178,7 +176,7 @@ impl<'a> Parser<'a> {
                         };
                     };
 
-                    let loc_msg = fmt_loc_err(self.filename_locations, &token.loc);
+                    let loc_msg = fmt_loc_err(&token.loc);
                     user_error!("{} can't convert number {} to i64", loc_msg, &name);
                 }
                 Kind::Literal => {
@@ -210,7 +208,7 @@ impl<'a> Parser<'a> {
                 | Kind::Minus
                 | Kind::Mult
                 | Kind::Semicolon => {
-                    let loc_msg = fmt_loc_err(self.filename_locations, &token.loc);
+                    let loc_msg = fmt_loc_err(&token.loc);
                     user_error!(
                         "{} primary expression for token kind {} doesn't exist",
                         loc_msg,
@@ -220,7 +218,7 @@ impl<'a> Parser<'a> {
             };
         }
         
-        let loc_msg = fmt_loc_err(self.filename_locations, &self.lexer.get_location());
+        let loc_msg = fmt_loc_err(&self.lexer.get_location());
         user_error!(
             "{} expected primary expression, reached end of file",
             loc_msg
@@ -435,7 +433,7 @@ impl<'a> Parser<'a> {
             // println!("STATEMENT AS EXPRESSION: {:?}", stmt);
             stmt
         } else {
-            let loc_msg = fmt_loc_err(self.filename_locations, &self.lexer.get_location());
+            let loc_msg = fmt_loc_err(&self.lexer.get_location());
             user_error!("{} expected statement, reached end of file", loc_msg);
         }
     }
@@ -498,7 +496,7 @@ impl<'a> Parser<'a> {
                     // TODO CHECK FOR DOUBLE COMMA's
                 },
                 _ => {
-                    let loc_msg = fmt_loc_err(self.filename_locations, &self.lexer.get_location());
+                    let loc_msg = fmt_loc_err(&self.lexer.get_location());
                     user_error!(
                         "{} unexpected token {} ",
                         loc_msg,
@@ -508,7 +506,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let loc_msg = fmt_loc_err(self.filename_locations, &self.lexer.get_location());
+        let loc_msg = fmt_loc_err(&self.lexer.get_location());
         user_error!(
             "{} expected ), reached end of file",
             loc_msg
@@ -545,7 +543,7 @@ impl<'a> Parser<'a> {
             return type_kind;
         }
 
-        let loc_msg = fmt_loc_err(self.filename_locations, &self.lexer.get_location());
+        let loc_msg = fmt_loc_err(&self.lexer.get_location());
 
         user_error!("{} unknown file type {}", loc_msg, &type_name);
     }
@@ -612,7 +610,7 @@ impl<'a> Parser<'a> {
             return AstTop::VarDef(self.parse_var_def());
         }
 
-        let loc_msg = fmt_loc_err(self.filename_locations, &token.loc);
+        let loc_msg = fmt_loc_err(&token.loc);
 
         // the code below currently expects 2 top level variant
         // force compiler error when adding new variant

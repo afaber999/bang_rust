@@ -1,10 +1,11 @@
 use std::collections::VecDeque;
 use std::usize;
-use crate::{location::{FileNameLocations, Location, fmt_loc_err}, token::{Token, Kind}};
+use crate::{location::{Location, fmt_loc_err}, token::{Token, Kind}};
 
 #[derive(Debug)]
 pub struct Lexer<'a> {
     content_str : &'a str,
+    filename : &'a str,
     content: Vec<char>,
     cur_idx: usize,
     last_idx: usize,
@@ -12,9 +13,6 @@ pub struct Lexer<'a> {
     line_start: usize,
     line_end: usize,
     row: usize,
-
-    file_idx: usize,
-    filename_locations: &'a FileNameLocations,
     //peek_token : Option<Token>,
     peek_buffer: VecDeque<Token<'a>>,
 }
@@ -22,22 +20,17 @@ pub struct Lexer<'a> {
 impl<'a> Lexer<'a> {
     pub fn new(
         content: &'a str,
-        input_file_name: String,
-        filename_locations: &'a FileNameLocations,
+        filename: &'a str,
     ) -> Self {
-        // add to fileame locations
-        let file_idx = filename_locations.insert(input_file_name);
-
         let mut result = Self {
             content_str : content,
+            filename, 
             content: content.chars().collect(),
             cur_idx: 0,
             last_idx: 0,
             line_start: 0,
             line_end: 0,
             row: 0,
-            file_idx,
-            filename_locations,
             peek_buffer: VecDeque::new(),
         };
         result.set_line_end();
@@ -168,8 +161,7 @@ impl<'a> Lexer<'a> {
         Location {
             row: self.row,
             col: self.cur_idx - self.line_start,
-            file_idx: self.file_idx,
-            file_name: "TODO ALSO",
+            filename: self.filename,
         }
     }
 
@@ -253,7 +245,7 @@ impl<'a> Lexer<'a> {
         }
 
         self.dump();
-        let loc_msg = fmt_loc_err(self.filename_locations, &self.get_location());
+        let loc_msg = fmt_loc_err(&self.get_location());
         user_error!(
             "{} Unexpected character {}",
             loc_msg,
@@ -306,7 +298,7 @@ impl<'a> Lexer<'a> {
         let token_name = self.get_string(token.text_start, token.text_len);
 
         if token_name != name {
-            let loc_msg = fmt_loc_err(self.filename_locations, &token.loc);
+            let loc_msg = fmt_loc_err(&token.loc);
             user_error!(
                 "{} expect keyword '{}' but got '{}'",
                 loc_msg,
@@ -321,7 +313,7 @@ impl<'a> Lexer<'a> {
     pub fn expect_token_next(&mut self, token_kind: Kind) -> Token<'a> {
         if let Some(token) = self.extract_next() {
             if token.token_kind != token_kind {
-                let loc_msg = fmt_loc_err(self.filename_locations, &token.loc);
+                let loc_msg = fmt_loc_err(&token.loc);
                 user_error!(
                     "{} Expected token {} but got {}",
                     loc_msg,
@@ -332,7 +324,7 @@ impl<'a> Lexer<'a> {
             return token;
         }
 
-        let loc_msg = fmt_loc_err(self.filename_locations, &self.get_location());
+        let loc_msg = fmt_loc_err(&self.get_location());
         user_error!(
             "{} reached end of input, expected token type: {}",
             loc_msg,
