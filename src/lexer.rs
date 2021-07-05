@@ -4,6 +4,7 @@ use crate::{location::{FileNameLocations, Location, fmt_loc_err}, token::{Token,
 
 #[derive(Debug)]
 pub struct Lexer<'a> {
+    content_str : &'a str,
     content: Vec<char>,
     cur_idx: usize,
     last_idx: usize,
@@ -15,12 +16,12 @@ pub struct Lexer<'a> {
     file_idx: usize,
     filename_locations: &'a FileNameLocations,
     //peek_token : Option<Token>,
-    peek_buffer: VecDeque<Token>,
+    peek_buffer: VecDeque<Token<'a>>,
 }
 
 impl<'a> Lexer<'a> {
     pub fn new(
-        content: &str,
+        content: &'a str,
         input_file_name: String,
         filename_locations: &'a FileNameLocations,
     ) -> Self {
@@ -28,6 +29,7 @@ impl<'a> Lexer<'a> {
         let file_idx = filename_locations.insert(input_file_name);
 
         let mut result = Self {
+            content_str : content,
             content: content.chars().collect(),
             cur_idx: 0,
             last_idx: 0,
@@ -162,24 +164,25 @@ impl<'a> Lexer<'a> {
         self.content[index]
     }
 
-    pub fn get_location(&self) -> Location {
+    pub fn get_location(&self) -> Location<'a> {
         Location {
             row: self.row,
             col: self.cur_idx - self.line_start,
             file_idx: self.file_idx,
+            file_name: "TODO ALSO",
         }
     }
 
-    fn extract_token(&mut self, token_kind: Kind, token_size: usize) -> Token {
+    fn extract_token(&mut self, token_kind: Kind, token_size: usize) -> Token<'a> {
         assert!(self.line_len() >= token_size);
 
-        let result = Token::new(token_kind, self.cur_idx, token_size, self.get_location());
+        let result = Token::new("TODO", token_kind, self.cur_idx, token_size, self.get_location());
 
         self.cur_idx += token_size;
         result
     }
 
-    fn bang_lexer_next_token_bypassing_peek_buffer(&mut self) -> Option<Token> {
+    fn bang_lexer_next_token_bypassing_peek_buffer(&mut self) -> Option<Token<'a>> {
         //println!("CHECK LINE: ");
 
         loop {
@@ -261,7 +264,8 @@ impl<'a> Lexer<'a> {
     pub fn refill_peek_buffer(&mut self) {
         const PEEK_BUFFER_CAPACITY: usize = 2;
         while self.peek_buffer.len() < PEEK_BUFFER_CAPACITY {
-            if let Some(next_token) = self.bang_lexer_next_token_bypassing_peek_buffer() {
+            let bang_lexer_next_token_bypassing_peek_buffer = self.bang_lexer_next_token_bypassing_peek_buffer();
+            if let Some(next_token) = bang_lexer_next_token_bypassing_peek_buffer {
                 self.peek_buffer.push_back(next_token);
             } else {
                 // reached of of stream
@@ -272,7 +276,7 @@ impl<'a> Lexer<'a> {
         //println!("LEXER ====== REFILL PEEK BUFFER  {:?}", &self.peek_buffer);
     }
 
-    pub fn peek(&mut self, offset: usize) -> Option<Token> {
+    pub fn peek(&mut self, offset: usize) -> Option<Token<'a>> {
         self.refill_peek_buffer();
 
         if offset < self.peek_buffer.len() {
@@ -284,7 +288,7 @@ impl<'a> Lexer<'a> {
         None
     }
 
-    pub fn extract_next(&mut self) -> Option<Token> {
+    pub fn extract_next(&mut self) -> Option<Token<'a>> {
         self.refill_peek_buffer();
         self.peek_buffer.pop_front()
     }
@@ -297,7 +301,7 @@ impl<'a> Lexer<'a> {
         token_name == keyword
     }
 
-    pub fn expect_keyword(&mut self, name: &str) -> Token {
+    pub fn expect_keyword(&mut self, name: &str) -> Token<'a> {
         let token = self.expect_token_next(Kind::Name);
         let token_name = self.get_string(token.text_start, token.text_len);
 
@@ -314,7 +318,7 @@ impl<'a> Lexer<'a> {
         token
     }
 
-    pub fn expect_token_next(&mut self, token_kind: Kind) -> Token {
+    pub fn expect_token_next(&mut self, token_kind: Kind) -> Token<'a> {
         if let Some(token) = self.extract_next() {
             if token.token_kind != token_kind {
                 let loc_msg = fmt_loc_err(self.filename_locations, &token.loc);

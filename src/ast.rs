@@ -3,39 +3,39 @@ use variant_count::VariantCount;
 
 
 #[derive(Debug, Clone)]
-pub struct AstIfStatement {
-    pub loc: Location,
-    pub condition: AstExpr,
-    pub then_block: Box<AstBlock>,
-    pub else_block: Option<Box<AstBlock>>,
+pub struct AstIfStatement<'a> {
+    pub loc: Location<'a>,
+    pub condition: AstExpr<'a>,
+    pub then_block: Box<AstBlock<'a>>,
+    pub else_block: Option<Box<AstBlock<'a>>>,
 }
 
 #[derive(Debug, Clone)]
-pub struct AstWhileStatement {
-    pub loc: Location,
-    pub condition: AstExpr,
-    pub block: Box<AstBlock>,
+pub struct AstWhileStatement<'a> {
+    pub loc: Location<'a>,
+    pub condition: AstExpr<'a>,
+    pub block: Box<AstBlock<'a>>,
 }
 
 #[derive(Debug, Clone, VariantCount)]
-pub enum AstStatement {
-    Expr(AstExpr),
-    If(AstIfStatement),
-    VarAssign(AstVarAssign),
-    While(AstWhileStatement),
-    VarDef(AstVarDef),
+pub enum AstStatement<'a> {
+    Expr(AstExpr<'a>),
+    If(AstIfStatement<'a>),
+    VarAssign(AstVarAssign<'a>),
+    While(AstWhileStatement<'a>),
+    VarDef(AstVarDef<'a>),
 }
 
 #[derive(Debug, Clone)]
-pub struct AstFunCall {
-    pub loc: Location,
+pub struct AstFunCall<'a> {
+    pub loc: Location<'a>,
     pub name: String,
-    pub args: Vec<AstExpr>,
+    pub args: Vec<AstExpr<'a>>,
 }
 
 #[derive(Debug, Clone)]
-pub struct AstVarRead {
-    pub loc: Location,
+pub struct AstVarRead<'a> {
+    pub loc: Location<'a>,
     pub name: String,
 }
 
@@ -53,49 +53,49 @@ pub enum AstBinaryOpKind {
 }
 
 #[derive(Debug, Clone)]
-pub struct AstBinaryOp {
-    pub loc: Location,
+pub struct AstBinaryOp<'a> {
+    pub loc: Location<'a>,
     pub kind: AstBinaryOpKind,
-    pub lhs: Box<AstExpr>,
-    pub rhs: Box<AstExpr>,
+    pub lhs: Box<AstExpr<'a>>,
+    pub rhs: Box<AstExpr<'a>>,
 }
 
 #[derive(Debug, Clone, VariantCount)]
-pub enum AstExprKind {
-    FuncCall(AstFunCall),
+pub enum AstExprKind<'a> {
+    FuncCall(AstFunCall<'a>),
     LitFloat(f64),
     LitInt(i64),
     LitChar(char),
     LitString(String),
     LitBool(bool),
-    VarRead(AstVarRead),
-    BinarayOp(AstBinaryOp),
+    VarRead(AstVarRead<'a>),
+    BinarayOp(AstBinaryOp<'a>),
 }
 
 #[derive(Debug, Clone)]
-pub struct AstExpr {
-    pub loc: Location,
-    pub kind: AstExprKind,
+pub struct AstExpr<'a> {
+    pub loc: Location<'a>,
+    pub kind: AstExprKind<'a>,
 }
 
 #[derive(Debug, Clone)]
-pub struct AstBlock {
-    pub statements: Vec<AstStatement>,
+pub struct AstBlock<'a> {
+    pub statements: Vec<AstStatement<'a>>,
 }
 
 #[derive(Debug, Clone)]
-pub struct AstProcParam {
-    pub loc: Location,
+pub struct AstProcParam<'a> {
+    pub loc: Location<'a>,
     pub param_name: String,
     pub param_type: AstTypes,
 }
 
 #[derive(Debug, Clone)]
-pub struct AstProcDef {
-    pub loc: Location,
+pub struct AstProcDef<'a> {
+    pub loc: Location<'a>,
     pub name: String,
-    pub body: AstBlock,
-    pub params: Vec<AstProcParam>,
+    pub body: AstBlock<'a>,
+    pub params: Vec<AstProcParam<'a>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, VariantCount)]
@@ -108,29 +108,29 @@ pub enum AstTypes {
 }
 
 #[derive(Debug, Clone)]
-pub struct AstVarDef {
-    pub loc: Location,
+pub struct AstVarDef<'a> {
+    pub loc: Location<'a>,
     pub name: String,
-    pub init_expr : Option<AstExpr>,
+    pub init_expr : Option<AstExpr<'a>>,
     pub var_type: AstTypes,
 }
 
 #[derive(Debug, Clone)]
-pub struct AstVarAssign {
-    pub loc: Location,
+pub struct AstVarAssign<'a> {
+    pub loc: Location<'a>,
     pub name: String,
-    pub expr: AstExpr,
+    pub expr: AstExpr<'a>,
 }
 
 #[derive(Debug, VariantCount)]
-pub enum AstTop {
-    ProcDef(AstProcDef),
-    VarDef(AstVarDef),
+pub enum AstTop<'a> {
+    ProcDef(AstProcDef<'a>),
+    VarDef(AstVarDef<'a>),
 }
 
 #[derive(Debug)]
-pub struct AstModule {
-    pub tops: Vec<AstTop>,
+pub struct AstModule<'a> {
+    pub tops: Vec<AstTop<'a>>,
 }
 
 #[derive(Debug, Clone, Copy)]

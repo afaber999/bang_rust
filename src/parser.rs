@@ -64,7 +64,7 @@ impl<'a> Parser<'a> {
         literal_chars.into_iter().collect()
     }
 
-    fn parse_func_call_args(&mut self) -> Vec<AstExpr> {
+    fn parse_func_call_args(&mut self) -> Vec<AstExpr<'a>> {
         // println!("---------- PARSE FUNC_CALL ARGS ");
         let mut args_expr = Vec::new();
 
@@ -91,7 +91,7 @@ impl<'a> Parser<'a> {
         args_expr
     }
 
-    fn parse_func_call(&mut self) -> AstFunCall {
+    fn parse_func_call(&mut self) -> AstFunCall<'a> {
         // println!("---------- PARSE FUNC_CALL ");
 
         let token = self.lexer.expect_token_next(Kind::Name);
@@ -105,7 +105,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_var_read(&mut self) -> AstVarRead {
+    fn parse_var_read(&mut self) -> AstVarRead<'a> {
         // println!("---------- PARSE VAR READ ");
         let token = self.lexer.expect_token_next(Kind::Name);
         let name = self.lexer.get_string(token.text_start, token.text_len);
@@ -115,7 +115,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_primary_expr(&mut self) -> AstExpr {
+    fn parse_primary_expr(&mut self) -> AstExpr<'a> {
         // println!("---------- PARSE PRIMARY EXPR ");
 
         if let Some(token) = self.lexer.peek(0) {
@@ -261,7 +261,7 @@ impl<'a> Parser<'a> {
 
                     
 
-    fn parse_expr(&mut self, prec : Precedence ) -> AstExpr {
+    fn parse_expr(&mut self, prec : Precedence ) -> AstExpr<'a> {
 
         //println!("---------- PARSE EXPR {:?}", prec);
 
@@ -334,7 +334,7 @@ impl<'a> Parser<'a> {
         lhs
     }
 
-    fn parse_if(&mut self) -> AstStatement {
+    fn parse_if(&mut self) -> AstStatement<'a> {
         // println!("---------- PARSE IF STATMENT ");
 
         let token = self.lexer.expect_keyword("if");
@@ -360,7 +360,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_while(&mut self) -> AstStatement {
+    fn parse_while(&mut self) -> AstStatement<'a> {
         // println!("---------- PARSE WHILE STATMENT ");
 
         let token = self.lexer.expect_keyword("while");
@@ -376,7 +376,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_statement(&mut self) -> AstStatement {
+    fn parse_statement(&mut self) -> AstStatement<'a> {
         // println!("---------- PARSE STATMENT ");
 
         if let Some(token) = self.lexer.peek(0) {
@@ -440,7 +440,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_curly_block(&mut self) -> AstBlock {
+    fn parse_curly_block(&mut self) -> AstBlock<'a> {
         // println!("---------- CURLY BLOCK ");
         let mut stmts = Vec::new();
 
@@ -460,7 +460,7 @@ impl<'a> Parser<'a> {
         AstBlock { statements: stmts }
     }
 
-    fn parse_proc_params(&mut self) -> Vec<AstProcParam> {
+    fn parse_proc_params(&mut self) -> Vec<AstProcParam<'a>> {
 
         println!("Parse proce ");
 
@@ -515,7 +515,7 @@ impl<'a> Parser<'a> {
         );
     }
 
-    fn parse_proc_def(&mut self) -> AstProcDef {
+    fn parse_proc_def(&mut self) -> AstProcDef<'a> {
         // println!("---------- PARSE PROC DEF ");
 
         // check proc token
@@ -550,7 +550,7 @@ impl<'a> Parser<'a> {
         user_error!("{} unknown file type {}", loc_msg, &type_name);
     }
 
-    fn parse_var_def(&mut self) -> AstVarDef {
+    fn parse_var_def(&mut self) -> AstVarDef<'a> {
         // println!("---------- PARSE VAR DEF");
 
         // check var token
@@ -587,7 +587,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_var_assign(&mut self) -> AstStatement {
+    fn parse_var_assign(&mut self) -> AstStatement<'a> {
         // println!("---------- PARSE VAR ASSIGN ");
 
         // check var token
@@ -601,7 +601,7 @@ impl<'a> Parser<'a> {
         AstStatement::VarAssign(AstVarAssign { loc, name, expr })
     }
 
-    fn parse_top(&mut self, token: &Token) -> AstTop {
+    fn parse_top(&mut self, token: &Token) -> AstTop<'a> {
         // println!("---------- PARSE TOP ");
 
         if self.lexer.is_keyword(&token, "proc") {
@@ -624,7 +624,7 @@ impl<'a> Parser<'a> {
         );
     }
 
-    fn parse_module(&mut self) -> AstModule {
+    fn parse_module(&mut self) -> AstModule<'a> {
         let mut tops = Vec::new();
 
         // while we got tokens left, parse top defs
@@ -635,7 +635,7 @@ impl<'a> Parser<'a> {
         AstModule { tops }
     }
 
-    pub fn parse(&mut self) -> AstModule {
+    pub fn parse(&mut self) -> AstModule<'a> {
         self.parse_module()
     }
 }

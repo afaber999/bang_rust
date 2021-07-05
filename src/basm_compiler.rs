@@ -58,15 +58,15 @@ pub enum VarStorageKind {
 }
 
 #[derive(Debug)]
-pub struct CompiledExpr {
-    pub loc: Location,
+pub struct CompiledExpr<'a> {
+    pub loc: Location<'a>,
     pub inst_addr: BMaddr,
     pub expr_type: AstTypes,
 }
 
 #[derive(Debug, Clone)]
-pub struct CompiledVar {
-    pub def: AstVarDef,
+pub struct CompiledVar<'a> {
+    pub def: AstVarDef<'a>,
     pub storage: VarStorageKind,
     // when storage == BANG_VAR_STATIC_STORAGE:
     //   addr is absolute address of the variable in memory
@@ -76,17 +76,17 @@ pub struct CompiledVar {
 }
 
 #[derive(Debug)]
-pub struct CompiledProc {
-    pub def: AstProcDef,
+pub struct CompiledProc<'a> {
+    pub def: AstProcDef<'a>,
     pub addr: BMaddr,
 }
 
 #[derive(Debug)]
-pub struct Scope {
-    pub vars: HashMap<String, CompiledVar>,
+pub struct Scope<'a> {
+    pub vars: HashMap<String, CompiledVar<'a>>,
 }
 
-impl Scope {
+impl<'a> Scope<'a> {
     pub fn new() -> Self {
         Self {
             vars: HashMap::new(),
@@ -96,7 +96,7 @@ impl Scope {
     pub fn add_compiled_var(
         &mut self,
         name: String,
-        compiled_var: CompiledVar,
+        compiled_var: CompiledVar<'a>,
     ) {
         self.vars.insert(name, compiled_var);
     }
@@ -129,9 +129,9 @@ pub struct BasmCompiler<'a> {
     memory: Vec<u8>,
     stack_frame_var_addr: BMaddr,
     frame_size: BMword,
-    scopes: VecDeque<Scope>,
+    scopes: VecDeque<Scope<'a>>,
     externals: HashMap<String, BMword>,
-    procedures: HashMap<String, CompiledProc>,
+    procedures: HashMap<String, CompiledProc<'a>>,
     entry: BMaddr,
     filename_locations: &'a FileNameLocations,
 }
@@ -271,7 +271,7 @@ impl<'a> BasmCompiler<'a> {
 
     fn compile_binary_op(
         &mut self,
-        binary_op: &AstBinaryOp,
+        binary_op: &'a AstBinaryOp,
     ) -> AstTypes {
         let loc_msg = fmt_loc_err(self.filename_locations, &binary_op.loc);
 
@@ -307,8 +307,8 @@ impl<'a> BasmCompiler<'a> {
 
     fn compile_expr(
         &mut self,
-        expr: &AstExpr,
-    ) -> CompiledExpr {
+        expr: &'a AstExpr,
+    ) -> CompiledExpr<'a> {
         // println!("compile_expr {:?}", expr);
 
         let inst_addr = self.get_inst_addr();
@@ -405,7 +405,7 @@ impl<'a> BasmCompiler<'a> {
 
     fn compile_ptr(
         &mut self,
-        func_call: &AstFunCall,
+        func_call: &'a AstFunCall,
     ) -> AstTypes {
         self.check_function_arity(&func_call, 1);
         let arg = &func_call.args[0];
@@ -474,7 +474,7 @@ impl<'a> BasmCompiler<'a> {
 
     fn compile_write_ptr(
         &mut self,
-        func_call: &AstFunCall,
+        func_call: &'a AstFunCall,
     ) -> AstTypes {
         self.check_function_arity(&func_call, 2);
 
@@ -503,7 +503,7 @@ impl<'a> BasmCompiler<'a> {
 
     fn compile_cast(
         &mut self,
-        func_call: &AstFunCall,
+        func_call: &'a AstFunCall,
     ) -> AstTypes {
         self.check_function_arity(&func_call, 2);
 
@@ -532,7 +532,7 @@ impl<'a> BasmCompiler<'a> {
 
     fn compile_load_ptr(
         &mut self,
-        func_call: &AstFunCall,
+        func_call: &'a AstFunCall,
     ) -> AstTypes {
         self.check_function_arity(&func_call, 2);
 
@@ -549,7 +549,7 @@ impl<'a> BasmCompiler<'a> {
 
     fn compile_store_ptr(
         &mut self,
-        func_call: &AstFunCall,
+        func_call: &'a AstFunCall,
     ) -> AstTypes {
         self.check_function_arity(&func_call, 3);
 
@@ -573,7 +573,7 @@ impl<'a> BasmCompiler<'a> {
 
     fn compile_var_read(
         &mut self,
-        var_read: &AstVarRead,
+        var_read: &'a AstVarRead,
     ) -> AstTypes {
         // println!("compile_var_read ");
         if let Some(compiled_var) =
@@ -595,7 +595,7 @@ impl<'a> BasmCompiler<'a> {
     }
 
 
-    fn compile_typed_read( &mut self, read_type: AstTypes, loc : &Location) {
+    fn compile_typed_read( &mut self, read_type: AstTypes, loc : &'a Location) {
         let instr = get_type_read_instruction(read_type);
         if BasmInstruction::NOP == instr {
             let loc_msg =
@@ -609,7 +609,7 @@ impl<'a> BasmCompiler<'a> {
         self.basm_push_inst(instr, 0);
     }
 
-    fn compile_typed_write( &mut self, write_type: AstTypes, loc : &Location) {
+    fn compile_typed_write( &mut self, write_type: AstTypes, loc : &'a Location) {
         let instr = get_type_write_instruction(write_type);
         if BasmInstruction::NOP == instr {
             let loc_msg =
@@ -626,7 +626,7 @@ impl<'a> BasmCompiler<'a> {
 
     fn compile_if_statment(
         &mut self,
-        if_statement: &AstIfStatement,
+        if_statement: &'a AstIfStatement,
     ) {
         // println!("Compile if instruction condition ");
         let compiled_cond = self.compile_expr(&if_statement.condition);
@@ -686,7 +686,7 @@ impl<'a> BasmCompiler<'a> {
 
     fn compile_while_statement(
         &mut self,
-        while_statement: &AstWhileStatement,
+        while_statement: &'a AstWhileStatement,
     ) {
         // println!("Compile while instruction condition ");
         let compiled_cond = self.compile_expr(&while_statement.condition);
@@ -719,7 +719,7 @@ impl<'a> BasmCompiler<'a> {
 
     fn compile_var_assign(
         &mut self,
-        var_assign: &AstVarAssign,
+        var_assign: &'a AstVarAssign,
     ) {
         // println!("compile_var_assign ");
         if let Some(compiled_var) =
@@ -757,7 +757,7 @@ impl<'a> BasmCompiler<'a> {
 
     pub fn compile_statement(
         &mut self,
-        stmt: &AstStatement,
+        stmt: &'a AstStatement,
     ) {
         // println!("compile_statement: {:?}", &stmt);
         match &stmt {
@@ -785,7 +785,7 @@ impl<'a> BasmCompiler<'a> {
 
     pub fn compile_block(
         &mut self,
-        block: &AstBlock) {
+        block: &'a AstBlock) {
         // println!("compile_block ");
         let stmts = &block.statements;
 
@@ -805,7 +805,7 @@ impl<'a> BasmCompiler<'a> {
 
     fn compile_proc_def(
         &mut self,
-        proc_def: &AstProcDef ) {
+        proc_def: &'a AstProcDef ) {
         // println!("compile_proc_def ");
         let inst_addr = self.get_inst_addr();
         let name = proc_def.name.clone();
@@ -834,7 +834,7 @@ impl<'a> BasmCompiler<'a> {
 
     fn compile_var_def(
         &mut self,
-        var_def: &AstVarDef,
+        var_def: &'a AstVarDef,
         storage: VarStorageKind,
     ) {
         // println!("compile_var_def {} {:?}", &var_def.name, &storage);
@@ -952,7 +952,7 @@ impl<'a> BasmCompiler<'a> {
 
     fn compile_module(
         &mut self,
-        module: &AstModule,
+        module: &'a AstModule,
     ) {
         for top in &module.tops {
             match top {
@@ -1008,6 +1008,7 @@ impl<'a> BasmCompiler<'a> {
                 row: 0,
                 col: 0,
                 file_idx: 0,
+                file_name: "TODO ALSO1",
             };
             let loc_msg = fmt_loc_err(self.filename_locations, &loc);
             user_error!(
@@ -1031,11 +1032,11 @@ impl<'a> BasmCompiler<'a> {
         self.stack_frame_var_addr = addr as BMaddr;
     }
 
-    fn scope_get_compiled_var_by_name(
+    fn scope_get_compiled_var_by_name<'b>(
         &self,
-        scope: &Scope,
-        name: &str,
-    ) -> Option<CompiledVar> {
+        scope: &'a Scope,
+        name: &'b str,
+    ) -> Option<CompiledVar<'a>> {
 
 //        let vars = scope.vars.len();
         //println!("FIND VAR IN SCOPE xxxxxxxxxxxx {} vars in scope {:?}", &name, &scope.vars);
@@ -1047,23 +1048,23 @@ impl<'a> BasmCompiler<'a> {
         None
     }
 
-    fn get_compiled_var_by_name(
+    fn get_compiled_var_by_name<'b>(
         &self,
-        name: &str,
-    ) -> Option<CompiledVar> {
+        name: &'b str,
+    ) -> Option<CompiledVar<'a>> {
 
         // let scopes = self.scopes.len();
         // println!("FIND @@@@@@@@@@@@@@@@@@@@@@@@ {} in scopes {}", &name, scopes);
 
         // walk scopes in reverse order
-        for scope in self.scopes.iter() {
 
-            // check if name exist in this scope
-            if let Some(compiled_var) =
-                self.scope_get_compiled_var_by_name(scope, name)
-            {
-                return Some(compiled_var)
+        // AF FIX
+        for scope in self.scopes.iter() {
+            if let Some(compiled_var) = scope.vars.get(name) {
+                //println!("FOUND VAR xxxxxxxxxxxx {}", &name);
+                return Some(compiled_var.clone())
             }
+
         }
         None
     }
@@ -1167,7 +1168,7 @@ impl<'a> BasmCompiler<'a> {
 
     pub fn compile(
         &mut self,
-        module: &AstModule,
+        module: &'a AstModule,
         entry_name: &str,
         stack_size: usize,
     ) {

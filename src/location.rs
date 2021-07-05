@@ -1,10 +1,11 @@
 use std::cell::RefCell;
 
 #[derive(Debug, Clone, Copy)]
-pub struct Location {
+pub struct Location<'a> {
     pub row: usize,
     pub col: usize,
     pub file_idx: usize,
+    pub file_name : &'a str,
 }
 
 #[derive(Debug, Default)]

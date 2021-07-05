@@ -3,7 +3,7 @@
 proc main() {
   var i:i64 = 0;
   while i< 10 {
-    write("hi\n");
+    write("hi世世丗丈\n"):
     i = i + 1;
   }
 }
