@@ -286,7 +286,7 @@ impl<'a> Lexer<'a> {
     }
 
     pub fn is_keyword(&mut self, token: &Token, keyword: &str) -> bool {
-        if token.token_kind != Kind::Name {
+        if token.kind != Kind::Name {
             return false;
         }
         let token_name = self.get_string(token.text_start, token.text_len);
@@ -312,13 +312,13 @@ impl<'a> Lexer<'a> {
 
     pub fn expect_token_next(&mut self, token_kind: Kind) -> Token<'a> {
         if let Some(token) = self.extract_next() {
-            if token.token_kind != token_kind {
+            if token.kind != token_kind {
                 let loc_msg = fmt_loc_err(&token.loc);
                 user_error!(
                     "{} Expected token {} but got {}",
                     loc_msg,
                     Token::kind_name(token_kind),
-                    Token::kind_name(token.token_kind)
+                    Token::kind_name(token.kind)
                 );
             }
             return token;
@@ -330,5 +330,33 @@ impl<'a> Lexer<'a> {
             loc_msg,
             Token::kind_name(token_kind)
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn check_locations() {
+        let mut lex = Lexer::new(";\r\n  ==\nVar\n", "");
+ 
+        let tok = lex.extract_next().unwrap();
+        println!("TOK {:?}", tok);
+        assert_eq!( tok.kind, Kind::Semicolon );
+        assert_eq!( tok.loc.row, 0 );
+        assert_eq!( tok.loc.col, 0 );
+
+        let tok = lex.extract_next().unwrap();
+        println!("TOK {:?}", tok);
+        assert_eq!( tok.kind, Kind::EqualsEquals );
+        assert_eq!( tok.loc.row, 1 );
+        assert_eq!( tok.loc.col, 2 );
+
+        let tok = lex.extract_next().unwrap();
+        println!("TOK {:?}", tok);
+        assert_eq!( tok.kind, Kind::Name );
+        assert_eq!( tok.loc.row, 2 );
+        assert_eq!( tok.loc.col, 0 );
     }
 }

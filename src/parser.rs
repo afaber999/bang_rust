@@ -67,13 +67,13 @@ impl<'a> Parser<'a> {
         self.lexer.expect_token_next(Kind::OpenParen);
 
         if let Some(next_token) = self.lexer.peek(0) {
-            if next_token.token_kind != Kind::CloseParen {
+            if next_token.kind != Kind::CloseParen {
                 args_expr.push(self.parse_expr(Precedence::P0));
             }
         }
 
         while let Some(next_token) = self.lexer.peek(0) {
-            if next_token.token_kind != Kind::Comma {
+            if next_token.kind != Kind::Comma {
                 break;
             }
             // consume comma token
@@ -124,7 +124,7 @@ impl<'a> Parser<'a> {
 
             let loc = token.loc;
 
-            return match token.token_kind {
+            return match token.kind {
                 Kind::Name => {
                     match name.as_str() {
                         "true" => {
@@ -145,7 +145,7 @@ impl<'a> Parser<'a> {
                         _ => {
                             // check var assignment statement
                             if let Some(next_token) = self.lexer.peek(1) {
-                                if next_token.token_kind == Kind::OpenParen {
+                                if next_token.kind == Kind::OpenParen {
                                     let func_call = self.parse_func_call();
 
                                     return AstExpr {
@@ -207,7 +207,7 @@ impl<'a> Parser<'a> {
                     user_error!(
                         "{} primary expression for token kind {} doesn't exist",
                         &token.loc.fmt_err(),
-                        Token::kind_name(token.token_kind)
+                        Token::kind_name(token.kind)
                     );
                 }
             };
@@ -270,7 +270,7 @@ impl<'a> Parser<'a> {
             //     name
             // );
 
-            match &token.token_kind {
+            match &token.kind {
                 // groep binary operators?
                 Kind::AndAnd |
                 Kind::OrOr   |
@@ -284,7 +284,7 @@ impl<'a> Parser<'a> {
                 Kind::Minus => {
 
                     // token is binary operator
-                    let bin_op_def = Self::binary_op_defs(token.token_kind);
+                    let bin_op_def = Self::binary_op_defs(token.kind);
 
                     // check if the precdedence of the operator
                     if bin_op_def.prec == prec {
@@ -371,7 +371,7 @@ impl<'a> Parser<'a> {
         // println!("---------- PARSE STATMENT ");
 
         if let Some(token) = self.lexer.peek(0) {
-            match token.token_kind {
+            match token.kind {
                 Kind::Name => {
                     // check if statement, return no semicolon needed
                     if self.lexer.is_keyword(&token, "if") {
@@ -390,7 +390,7 @@ impl<'a> Parser<'a> {
 
                     // check var assignment statement, semicoln parsed inside var_assign
                     if let Some(next_token) = self.lexer.peek(1) {
-                        if next_token.token_kind == Kind::Equals {
+                        if next_token.kind == Kind::Equals {
                             return self.parse_var_assign();
                         }
                     }
@@ -438,7 +438,7 @@ impl<'a> Parser<'a> {
         self.lexer.expect_token_next(Kind::OpenCurly);
 
         while let Some(token) = self.lexer.peek(0) {
-            if token.token_kind == Kind::CloseCurly {
+            if token.kind == Kind::CloseCurly {
                 break;
             }
             // add expression to block
@@ -462,7 +462,7 @@ impl<'a> Parser<'a> {
         while let Some(next_token) = self.lexer.peek(0) {
             println!("Parse proce token {:?} ", &next_token);
 
-            match next_token.token_kind {
+            match next_token.kind {
                 Kind::CloseParen => {
                     self.lexer.expect_token_next(Kind::CloseParen);
                     return params;
@@ -491,7 +491,7 @@ impl<'a> Parser<'a> {
                     user_error!(
                         "{} unexpected token {} ",
                         &self.lexer.get_location().fmt_err(),
-                        Token::kind_name(next_token.token_kind)
+                        Token::kind_name(next_token.kind)
                     );                    
                 }
             }
@@ -556,7 +556,7 @@ impl<'a> Parser<'a> {
 
         if let Some(next_token) = self.lexer.peek(0) {
             // println!("CHECK VAR ASSIGNMENT ");
-            if next_token.token_kind == Kind::Equals {
+            if next_token.kind == Kind::Equals {
                 self.lexer.extract_next();
                 init_expr = Some( self.parse_expr(Precedence::P0) );
             }
@@ -604,7 +604,7 @@ impl<'a> Parser<'a> {
         user_error!(
             "{} expected var or proc, got {} ",
             &token.loc.fmt_err(),
-            Token::kind_name(token.token_kind)
+            Token::kind_name(token.kind)
         );
     }
 

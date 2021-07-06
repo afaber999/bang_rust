@@ -32,7 +32,7 @@ pub enum Kind {
 #[derive(Debug, Clone, Copy)]
 pub struct Token<'a> {
     pub text_str : &'a str,
-    pub token_kind: Kind,
+    pub kind: Kind,
     pub text_start: usize,
     pub text_len: usize,
     pub loc: Location<'a>,
@@ -42,7 +42,7 @@ impl<'a> Token<'a> {
     pub fn new(text_str: &'a str, token_kind: Kind, text_start: usize, text_len: usize, loc: Location<'a>) -> Self {
         Self {
             text_str,
-            token_kind,
+            kind: token_kind,
             text_start,
             text_len,
             loc,
