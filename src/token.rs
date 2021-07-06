@@ -33,18 +33,14 @@ pub enum Kind {
 pub struct Token<'a> {
     pub text_str : &'a str,
     pub kind: Kind,
-    pub text_start: usize,
-    pub text_len: usize,
     pub loc: Location<'a>,
 }
 
 impl<'a> Token<'a> {
-    pub fn new(text_str: &'a str, token_kind: Kind, text_start: usize, text_len: usize, loc: Location<'a>) -> Self {
+    pub fn new(text_str: &'a str, token_kind: Kind, loc: Location<'a>) -> Self {
         Self {
             text_str,
             kind: token_kind,
-            text_start,
-            text_len,
             loc,
         }
     }

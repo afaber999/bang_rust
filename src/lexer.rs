@@ -168,7 +168,9 @@ impl<'a> Lexer<'a> {
     fn extract_token(&mut self, token_kind: Kind, token_size: usize) -> Token<'a> {
         assert!(self.line_len() >= token_size);
 
-        let result = Token::new("TODO", token_kind, self.cur_idx, token_size, self.get_location());
+        let text_str = &self.content_str[self.cur_idx .. self.cur_idx + token_size ];
+
+        let result = Token::new(text_str, token_kind, self.get_location());
 
         self.cur_idx += token_size;
         result
@@ -289,21 +291,18 @@ impl<'a> Lexer<'a> {
         if token.kind != Kind::Name {
             return false;
         }
-        let token_name = self.get_string(token.text_start, token.text_len);
-        token_name == keyword
+        token.text_str == keyword
     }
 
     pub fn expect_keyword(&mut self, name: &str) -> Token<'a> {
         let token = self.expect_token_next(Kind::Name);
-        let token_name = self.get_string(token.text_start, token.text_len);
-
-        if token_name != name {
+        if token.text_str != name {
             let loc_msg = fmt_loc_err(&token.loc);
             user_error!(
                 "{} expect keyword '{}' but got '{}'",
                 loc_msg,
                 name,
-                token_name
+                token.text_str
             );
         }
 
@@ -338,8 +337,15 @@ mod tests {
     use super::*;
 
     #[test]
+    fn check_empty() {
+        let mut lex = Lexer::new("", "");
+        assert!( lex.eos() ) ;
+    }
+
+
+    #[test]
     fn check_locations() {
-        let mut lex = Lexer::new(";\r\n  ==\nVar\n", "");
+        let mut lex = Lexer::new(";\r\n  ==\nVar i:i64 = 3\n", "");
  
         let tok = lex.extract_next().unwrap();
         println!("TOK {:?}", tok);
@@ -356,7 +362,41 @@ mod tests {
         let tok = lex.extract_next().unwrap();
         println!("TOK {:?}", tok);
         assert_eq!( tok.kind, Kind::Name );
+        assert!( lex.is_keyword(&tok, &"Var") );
         assert_eq!( tok.loc.row, 2 );
         assert_eq!( tok.loc.col, 0 );
+
+        let tok = lex.extract_next().unwrap();
+        println!("TOK {:?}", tok);
+        assert_eq!( tok.kind, Kind::Name );
+        assert!( lex.is_keyword(&tok, &"i") );
+        assert_eq!( tok.loc.row, 2 );
+        assert_eq!( tok.loc.col, 4 );
+        
+        let tok = lex.extract_next().unwrap();
+        println!("TOK {:?}", tok);
+        assert_eq!( tok.kind, Kind::Colon );
+        assert_eq!( tok.loc.row, 2 );
+        assert_eq!( tok.loc.col, 5 );
+
+        let tok = lex.extract_next().unwrap();
+        println!("TOK {:?}", tok);
+        assert_eq!( tok.kind, Kind::Name );
+        assert!( lex.is_keyword(&tok, &"i64") );
+        assert_eq!( tok.loc.row, 2 );
+        assert_eq!( tok.loc.col, 6 );
+
+
+        let tok = lex.extract_next().unwrap();
+        println!("TOK {:?}", tok);
+        assert_eq!( tok.kind, Kind::Equals );
+        assert_eq!( tok.loc.row, 2 );
+        assert_eq!( tok.loc.col, 10 );     
+        
+        let tok = lex.extract_next().unwrap();
+        println!("TOK {:?}", tok);
+        assert_eq!( tok.kind, Kind::Number );
+        assert_eq!( tok.loc.row, 2 );
+        assert_eq!( tok.loc.col, 12 );        
     }
 }

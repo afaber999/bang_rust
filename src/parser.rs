@@ -22,21 +22,24 @@ impl<'a> Parser<'a> {
 
         let token = self.lexer.expect_token_next(Kind::Literal);
 
-        let mut i = token.text_start + 1;
-        let last_index = i + token.text_len - 2;
+        // AF TODO user iterator instead of temp vector
+        let tmp_vec : Vec<char> = token.text_str.chars().collect();
+        let mut i = 1;
+        let last_index = tmp_vec.len() - 2;
 
         let mut literal_chars = Vec::new();
 
         while i < last_index {
-            let ch = self.lexer.get_char(i);
+
+            let ch = tmp_vec[i];
             if ch == '\\' {
-                if i + 1 >= last_index {
+                if i  >= last_index {
                     let mut loc = token.loc;
                     loc.col += i + 1;
                     user_error!("{} unfinished string literal escape sequence",&loc.fmt_err());
                 }
 
-                let ch = self.lexer.get_char(i + 1);
+                let ch = tmp_vec[i + 1];
                 match ch {
                     '0' => {
                         literal_chars.push('\0');
@@ -91,12 +94,11 @@ impl<'a> Parser<'a> {
         // println!("---------- PARSE FUNC_CALL ");
 
         let token = self.lexer.expect_token_next(Kind::Name);
-        let name = self.lexer.get_string(token.text_start, token.text_len);
 
         let args = self.parse_func_call_args();
         AstFunCall {
             loc: token.loc,
-            name,
+            name : token.text_str,
             args,
         }
     }
@@ -104,10 +106,9 @@ impl<'a> Parser<'a> {
     fn parse_var_read(&mut self) -> AstVarRead<'a> {
         // println!("---------- PARSE VAR READ ");
         let token = self.lexer.expect_token_next(Kind::Name);
-        let name = self.lexer.get_string(token.text_start, token.text_len);
         AstVarRead {
             loc: token.loc,
-            name,
+            name : token.text_str,
         }
     }
 
@@ -115,7 +116,6 @@ impl<'a> Parser<'a> {
         // println!("---------- PARSE PRIMARY EXPR ");
 
         if let Some(token) = self.lexer.peek(0) {
-            let name = self.lexer.get_string(token.text_start, token.text_len);
             // println!(
             //     "PRIMARY EXPR PEEKED TOKEN FOR EXPR {} Name: {}",
             //     Token::kind_name(token.token_kind),
@@ -126,7 +126,7 @@ impl<'a> Parser<'a> {
 
             return match token.kind {
                 Kind::Name => {
-                    match name.as_str() {
+                    match token.text_str {
                         "true" => {
                             self.lexer.extract_next();
 
@@ -167,13 +167,13 @@ impl<'a> Parser<'a> {
                 Kind::Number => {
                     let _ = self.lexer.extract_next();
 
-                    if let Ok(ivalue) = name.parse::<i64>() {
+                    if let Ok(ivalue) = token.text_str.parse::<i64>() {
                         return AstExpr {
                             loc,
                             kind: AstExprKind::LitInt(ivalue),
                         };
                     };
-                    user_error!("{} can't convert number {} to i64", &token.loc.fmt_err(), &name);
+                    user_error!("{} can't convert number {} to i64", &token.loc.fmt_err(), token.text_str);
                 }
                 Kind::Literal => {
                     let literal = self.parse_string_literal();
@@ -470,7 +470,7 @@ impl<'a> Parser<'a> {
                 Kind::Name => {
                     // expect name of var token
                     let token = self.lexer.expect_token_next(Kind::Name);
-                    let param_name = self.lexer.get_string(token.text_start, token.text_len);
+
                     // expect colon
                     self.lexer.expect_token_next(Kind::Colon);
 
@@ -479,7 +479,7 @@ impl<'a> Parser<'a> {
 
                     params.push(AstProcParam {
                         loc: token.loc,
-                        param_name,
+                        param_name: token.text_str,
                         param_type,
                     })
                 },
@@ -512,28 +512,24 @@ impl<'a> Parser<'a> {
 
         // expect name of proc token
         let token = self.lexer.expect_token_next(Kind::Name);
-        let name = self.lexer.get_string(token.text_start, token.text_len);
-
         let params = self.parse_proc_params();
 
         let body = self.parse_curly_block();
 
 
-        AstProcDef { loc, name, body, params }
+        AstProcDef { loc, name: token.text_str, body, params }
     }
 
     fn parse_type(&mut self) -> AstTypes {
         // println!("---------- PARSE TYPE ");
         // expect type name
         let token = self.lexer.expect_token_next(Kind::Name);
-        let type_name = self.lexer.get_string(token.text_start, token.text_len);
-        //println!("VAR TYPE NAME IS: {} ", type_name);
 
-        if let Some(type_kind) = name_to_type(type_name.as_str()) {
+        if let Some(type_kind) = name_to_type(token.text_str) {
             return type_kind;
         }
 
-        user_error!("{} unknown file type {}",&self.lexer.get_location().fmt_err(), &type_name);
+        user_error!("{} unknown file type {}",&self.lexer.get_location().fmt_err(), token.text_str);
     }
 
     fn parse_var_def(&mut self) -> AstVarDef<'a> {
@@ -545,7 +541,6 @@ impl<'a> Parser<'a> {
 
         // expect name of var token
         let token = self.lexer.expect_token_next(Kind::Name);
-        let name = self.lexer.get_string(token.text_start, token.text_len);
 
         // expect colon
         self.lexer.expect_token_next(Kind::Colon);
@@ -567,7 +562,7 @@ impl<'a> Parser<'a> {
 
         AstVarDef {
             loc,
-            name,
+            name : token.text_str,
             init_expr,
             var_type,
         }
@@ -578,7 +573,7 @@ impl<'a> Parser<'a> {
 
         // check var token
         let token = self.lexer.expect_token_next(Kind::Name);
-        let name = self.lexer.get_string(token.text_start, token.text_len);
+        let name = token.text_str;
         let loc = token.loc;
         let _ = self.lexer.expect_token_next(Kind::Equals);
         let expr = self.parse_expr(Precedence::P0);

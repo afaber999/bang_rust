@@ -82,7 +82,8 @@ pub struct CompiledProc<'a> {
 
 #[derive(Debug)]
 pub struct Scope<'a> {
-    pub vars: HashMap<String, CompiledVar<'a>>,
+
+    pub vars: HashMap<&'a str, CompiledVar<'a>>,
 }
 
 impl<'a> Scope<'a> {
@@ -94,7 +95,7 @@ impl<'a> Scope<'a> {
 
     pub fn add_compiled_var(
         &mut self,
-        name: String,
+        name: &'a str,
         compiled_var: CompiledVar<'a>,
     ) {
         self.vars.insert(name, compiled_var);
@@ -130,7 +131,7 @@ pub struct BasmCompiler<'a> {
     frame_size: BMword,
     scopes: VecDeque<Scope<'a>>,
     externals: HashMap<String, BMword>,
-    procedures: HashMap<String, CompiledProc<'a>>,
+    procedures: HashMap<&'a str, CompiledProc<'a>>,
     entry: BMaddr,
 }
 
@@ -316,7 +317,7 @@ impl<'a> BasmCompiler<'a> {
                 // func_call);
 
                 let mut func_idx: i64 = -1;
-                if let Some(idx) = self.externals.get(&func_call.name) {
+                if let Some(idx) = self.externals.get(func_call.name) {
                     func_idx = *idx as i64;
                 }
 
@@ -341,7 +342,7 @@ impl<'a> BasmCompiler<'a> {
                 } else if func_call.name == "store_ptr" {
                     expr_type = self.compile_store_ptr(func_call);
                 } else if let Some(compiled_proc) =
-                    self.procedures.get(&func_call.name)
+                    self.procedures.get(func_call.name)
                 {
                     let proc_addr = compiled_proc.addr as BMword;
                     self.compile_push_new_frame();
@@ -787,11 +788,11 @@ impl<'a> BasmCompiler<'a> {
         proc_def: &'a AstProcDef ) {
         // println!("compile_proc_def ");
         let inst_addr = self.get_inst_addr();
-        let name = proc_def.name.clone();
+        let name = proc_def.name;
         let body = &proc_def.body;
 
         // check if name already exist
-        if let Some(existing_proc) = self.procedures.get(&name) {
+        if let Some(existing_proc) = self.procedures.get(name) {
             user_error!(
                 "{} procedure with name {} is already defined at {}",
                 &proc_def.loc.fmt_err(),
@@ -914,7 +915,7 @@ impl<'a> BasmCompiler<'a> {
             //     "add variable {} to scope {}",
             //     &compiled_var.def.name, scopes
             // );
-            scope.add_compiled_var(var_def.name.clone(), compiled_var);
+            scope.add_compiled_var(var_def.name, compiled_var);
         } else {
             internal_error!("Epxected scope to store variable");
         }

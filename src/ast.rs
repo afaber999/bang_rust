@@ -29,14 +29,14 @@ pub enum AstStatement<'a> {
 #[derive(Debug, Clone)]
 pub struct AstFunCall<'a> {
     pub loc: Location<'a>,
-    pub name: String,
+    pub name: &'a str,
     pub args: Vec<AstExpr<'a>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct AstVarRead<'a> {
     pub loc: Location<'a>,
-    pub name: String,
+    pub name: &'a str,
 }
 
 #[derive(Debug, Clone, Copy, VariantCount)]
@@ -86,14 +86,14 @@ pub struct AstBlock<'a> {
 #[derive(Debug, Clone)]
 pub struct AstProcParam<'a> {
     pub loc: Location<'a>,
-    pub param_name: String,
+    pub param_name: &'a str,
     pub param_type: AstTypes,
 }
 
 #[derive(Debug, Clone)]
 pub struct AstProcDef<'a> {
     pub loc: Location<'a>,
-    pub name: String,
+    pub name: &'a str,
     pub body: AstBlock<'a>,
     pub params: Vec<AstProcParam<'a>>,
 }
@@ -110,7 +110,7 @@ pub enum AstTypes {
 #[derive(Debug, Clone)]
 pub struct AstVarDef<'a> {
     pub loc: Location<'a>,
-    pub name: String,
+    pub name: &'a str,
     pub init_expr : Option<AstExpr<'a>>,
     pub var_type: AstTypes,
 }
@@ -118,7 +118,7 @@ pub struct AstVarDef<'a> {
 #[derive(Debug, Clone)]
 pub struct AstVarAssign<'a> {
     pub loc: Location<'a>,
-    pub name: String,
+    pub name: &'a str,
     pub expr: AstExpr<'a>,
 }
 
