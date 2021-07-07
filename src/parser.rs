@@ -478,7 +478,7 @@ impl<'a> Parser<'a> {
                     let param_type = self.parse_type();
 
                     params.push(AstProcParam {
-                        loc: token.loc,
+                        loc: token.loc, 
                         param_name: token.text_str,
                         param_type,
                     })

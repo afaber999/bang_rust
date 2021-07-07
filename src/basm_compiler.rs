@@ -65,7 +65,9 @@ pub struct CompiledExpr<'a> {
 
 #[derive(Debug, Clone)]
 pub struct CompiledVar<'a> {
-    pub def: AstVarDef<'a>,
+    pub name : &'a str,
+    pub var_type : AstTypes,
+    pub loc : Location<'a>,
     pub storage: VarStorageKind,
     // when storage == BANG_VAR_STATIC_STORAGE:
     //   addr is absolute address of the variable in memory
@@ -566,7 +568,7 @@ impl<'a> BasmCompiler<'a> {
         if let Some(compiled_var) =
             self.get_compiled_var_by_name(&var_read.name)
         {
-            let var_type = compiled_var.def.var_type;
+            let var_type = compiled_var.var_type;
             // {
             //     let loc_msg = fmt_loc_err(&var_read.loc);
             //     println!("compile_var_assign  {} {}", & compiled_var.def.name, loc_msg);
@@ -704,7 +706,7 @@ impl<'a> BasmCompiler<'a> {
         if let Some(compiled_var) =
             self.get_compiled_var_by_name(&var_assign.name)
         {
-            let var_type = compiled_var.def.var_type;
+            let var_type = compiled_var.var_type;
 
             self.compile_get_var_addr(&compiled_var);
             let compiled_expr = self.compile_expr(&var_assign.expr);
@@ -872,7 +874,9 @@ impl<'a> BasmCompiler<'a> {
                 let compiled_var = CompiledVar {
                     addr : addr as BMaddr,
                     storage,
-                    def: var_def.clone(),
+                    name : var_def.name,
+                    var_type : var_def.var_type,
+                    loc : var_def.loc
                 };
                 compiled_var
             },
@@ -882,7 +886,9 @@ impl<'a> BasmCompiler<'a> {
                 let compiled_var = CompiledVar {
                     addr : self.frame_size as BMaddr,
                     storage,
-                    def: var_def.clone(),
+                    name : var_def.name,
+                    var_type : var_def.var_type,
+                    loc : var_def.loc
                 };
 
                 if let Some(init_expr) = &var_def.init_expr {
@@ -942,13 +948,13 @@ impl<'a> BasmCompiler<'a> {
         heap_base_name: &str,
     ) {
         if let Some(var) = self.get_compiled_var_by_name(heap_base_name) {
-            if var.def.var_type != AstTypes::PTR {
+            if var.var_type != AstTypes::PTR {
                 user_error!(
                     "{} Heap base variable named {} needs to be of type  type {} but got type {}",
-                    &var.def.loc.fmt_err(),
+                    &var.loc.fmt_err(),
                     &heap_base_name,
                     type_to_str(AstTypes::PTR),
-                    type_to_str(var.def.var_type)
+                    type_to_str(var.var_type)
                 );
             }
 
@@ -1099,7 +1105,7 @@ impl<'a> BasmCompiler<'a> {
             let mut dealloc_size = 0;
             for var in scope.vars.values() {
                 if  var.storage == VarStorageKind::Stack {
-                    dealloc_size += get_type_size(var.def.var_type) as i64;
+                    dealloc_size += get_type_size(var.var_type) as i64;
                 }
             }
             self.frame_size -= dealloc_size;
