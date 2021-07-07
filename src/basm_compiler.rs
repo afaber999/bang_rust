@@ -1,37 +1,15 @@
-use crate::{
-    ast::{
-        name_to_type,
-        type_to_str,
-        AstBinaryOp,
-        AstBlock,
-        AstExpr,
-        AstExprKind,
-        AstFunCall,
-        AstIfStatement,
-        AstModule,
-        AstProcDef,
-        AstStatement,
-        AstTop,
-        AstTypes,
-        AstVarAssign,
-        AstVarDef,
-        AstVarRead,
-        AstWhileStatement,
-    },
-    basm_instructions::{
+use crate::{ast::{AstBinaryOp, AstBlock, AstExpr, AstExprKind, AstFunCall, AstIfStatement, AstModule, AstProcDef, AstProcParam, AstStatement, AstTop, AstTypes, AstVarAssign, AstVarDef, AstVarRead, AstWhileStatement, name_to_type, type_to_str}, basm_instructions::{
         basm_instruction_opcode,
         get_type_read_instruction,
         get_type_size,
         get_type_write_instruction,
         map_binary_op_instructions,
         BasmInstruction,
-    },
-    location::{
+    }, location::{
         fmt_loc,
         fmt_loc_err,
         Location,
-    },
-};
+    }};
 use std::{
     collections::{
         HashMap,
@@ -78,8 +56,9 @@ pub struct CompiledVar<'a> {
 
 #[derive(Debug)]
 pub struct CompiledProc<'a> {
-    pub loc: Location<'a>,
     pub name: &'a str,
+    pub params: Vec<AstProcParam<'a>>,
+    pub loc: Location<'a>,
     pub addr: BMaddr,
 }
 
@@ -807,6 +786,7 @@ impl<'a> BasmCompiler<'a> {
         // insert before the block, so we can do recursion!
         self.procedures.insert(name, CompiledProc {
             name : proc_def.name,
+            params : proc_def.params.clone(),
             loc : proc_def.loc,
             addr: inst_addr,
         });
