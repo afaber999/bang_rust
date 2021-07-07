@@ -78,7 +78,8 @@ pub struct CompiledVar<'a> {
 
 #[derive(Debug)]
 pub struct CompiledProc<'a> {
-    pub def: AstProcDef<'a>,
+    pub loc: Location<'a>,
+    pub name: &'a str,
     pub addr: BMaddr,
 }
 
@@ -799,13 +800,14 @@ impl<'a> BasmCompiler<'a> {
                 "{} procedure with name {} is already defined at {}",
                 &proc_def.loc.fmt_err(),
                 &name,
-                fmt_loc(&existing_proc.def.loc)
+                fmt_loc(&existing_proc.loc)
             );
         }
 
         // insert before the block, so we can do recursion!
         self.procedures.insert(name, CompiledProc {
-            def: proc_def.clone(),
+            name : proc_def.name,
+            loc : proc_def.loc,
             addr: inst_addr,
         });
 
