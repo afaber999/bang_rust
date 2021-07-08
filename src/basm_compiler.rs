@@ -283,6 +283,40 @@ impl<'a> BasmCompiler<'a> {
         );
     }
 
+    fn compile_func_call(&mut self, func_call : &AstFunCall) ->AstTypes {
+
+        if let Some(compiled_proc) =
+            self.procedures.get(func_call.name)
+        {
+
+            let arity_params = compiled_proc.params.len();
+            let arity_args = func_call.args.len();
+    
+            if arity_args != arity_params {
+                user_error!(
+                    "{} Incorrect number of function arguments for {} got {} expected {}",
+                    &func_call.loc.fmt_err(),
+                    &func_call.name,
+                    arity_args,
+                    arity_params);
+            }
+            let proc_addr = compiled_proc.addr as BMword;
+            self.compile_push_new_frame();
+            self.basm_push_inst(BasmInstruction::CALL, proc_addr);
+            self.compile_pop_frame();
+            // currently no function return parameters are allowed
+            // so type is always be void
+            AstTypes::VOID            
+
+        } else {
+            user_error!(
+                "{} Can't find definition for function name  {}",
+                &func_call.loc.fmt_err(),
+                &func_call.name
+            );
+        } 
+    }
+
     fn compile_expr(
         &mut self,
         expr: &'a AstExpr,
@@ -323,19 +357,8 @@ impl<'a> BasmCompiler<'a> {
                     expr_type = self.compile_load_ptr(func_call);
                 } else if func_call.name == "store_ptr" {
                     expr_type = self.compile_store_ptr(func_call);
-                } else if let Some(compiled_proc) =
-                    self.procedures.get(func_call.name)
-                {
-                    let proc_addr = compiled_proc.addr as BMword;
-                    self.compile_push_new_frame();
-                    self.basm_push_inst(BasmInstruction::CALL, proc_addr);
-                    self.compile_pop_frame();
                 } else {
-                    user_error!(
-                        "{} Can't find definition for function name  {}",
-                        &func_call.loc.fmt_err(),
-                        &func_call.name
-                    );
+                    expr_type = self.compile_func_call(func_call);
                 }
             },
             AstExprKind::LitString(literal) => {
