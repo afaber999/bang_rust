@@ -283,11 +283,12 @@ impl<'a> BasmCompiler<'a> {
         );
     }
 
-    fn compile_func_call(&mut self, func_call : &AstFunCall) ->AstTypes {
+    fn compile_func_call(&mut self, func_call : &'a AstFunCall) ->AstTypes {
 
         if let Some(compiled_proc) =
             self.procedures.get(func_call.name)
         {
+            let proc_addr = compiled_proc.addr as BMword;
 
             let arity_params = compiled_proc.params.len();
             let arity_args = func_call.args.len();
@@ -300,7 +301,18 @@ impl<'a> BasmCompiler<'a> {
                     arity_args,
                     arity_params);
             }
-            let proc_addr = compiled_proc.addr as BMword;
+
+            // AF TODO FIGHT AGAIN WITH THE BORROW CHECKER
+            let fix_param = &compiled_proc.params.clone();
+
+            for idx in 0..arity_args {
+                let param  = &fix_param[idx];
+                let arg = &func_call.args[idx];
+                let compiled_expr = self.compile_expr(arg);
+                self.type_check_expr( &compiled_expr, param.param_type);
+            } 
+
+
             self.compile_push_new_frame();
             self.basm_push_inst(BasmInstruction::CALL, proc_addr);
             self.compile_pop_frame();
