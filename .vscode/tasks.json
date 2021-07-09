@@ -12,7 +12,7 @@
                 // "--release",
                 "--",
                 "-s",
-                "72",
+                "256",
                 ".\\examples\\test.bang",
             ],
             "group": {

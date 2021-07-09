@@ -1,0 +1,18 @@
+proc message( msg:ptr, msg_size:i64) {
+  write("------------------------------\n");
+  write_ptr(msg, msg_size);
+  write("------------------------------\n");
+}
+
+
+var heap_base : ptr;
+
+proc main() {
+  var i: i64;
+  while i < 26 {
+    store_ptr( u8 , heap_base + cast(ptr, i ), cast(u8, i + 65));
+    i= i+ 1;
+  }
+  message( heap_base, 26);
+}
+

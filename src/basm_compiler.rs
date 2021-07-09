@@ -7,7 +7,6 @@ use crate::{ast::{AstBinaryOp, AstBlock, AstExpr, AstExprKind, AstFunCall, AstIf
         BasmInstruction,
     }, location::{
         fmt_loc,
-        fmt_loc_err,
         Location,
     }};
 use std::{
@@ -41,7 +40,7 @@ pub struct CompiledExpr<'a> {
     pub expr_type: AstTypes,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct CompiledVar<'a> {
     pub name : &'a str,
     pub var_type : AstTypes,
@@ -610,7 +609,7 @@ impl<'a> BasmCompiler<'a> {
         self.basm_push_inst(instr, 0);
     }
 
-    fn compile_typed_write( &mut self, write_type: AstTypes, loc : &'a Location) {
+    fn compile_typed_write<'b>( &mut self, write_type: AstTypes, loc : &'b Location) {
         let instr = get_type_write_instruction(write_type);
         if BasmInstruction::NOP == instr {
             user_error!(
@@ -642,9 +641,9 @@ impl<'a> BasmCompiler<'a> {
         let jmp_no_if_op = self.basm_push_inst(BasmInstruction::JMPIf, 0) + 1;
         // println!("######### jmp_not_if_addr {} ", jmp_no_if_op);
 
-        //self.push_scope();
+        self.push_scope();
         self.compile_block(&if_statement.then_block);
-        //self.pop_scope();
+        self.pop_scope();
 
 
         if let Some(else_block) = &if_statement.else_block {
@@ -656,9 +655,9 @@ impl<'a> BasmCompiler<'a> {
             let jmp_addr = self.get_inst_addr() as BMword;
             self.program[jmp_no_if_op] = jmp_addr;
 
-            //self.push_scope();
+            self.push_scope();
             self.compile_block(&else_block);
-            //self.pop_scope();
+            self.pop_scope();
 
             // fill in deferred address of jmp over else block
             let jmp_addr = self.get_inst_addr() as BMword;
@@ -700,9 +699,9 @@ impl<'a> BasmCompiler<'a> {
         self.basm_push_inst(BasmInstruction::NOT, 0);
         let end_while_jmp = self.basm_push_inst(BasmInstruction::JMPIf, 0) + 1;
        
-        //self.push_scope();
+        self.push_scope();
         self.compile_block(&while_statement.block);
-        //self.pop_scope();
+        self.pop_scope();
 
         self.basm_push_inst(
             BasmInstruction::JMP,
@@ -779,16 +778,12 @@ impl<'a> BasmCompiler<'a> {
         &mut self,
         block: &'a AstBlock) {
 
-        self.push_scope();
-
         // println!("compile_block ");
         let stmts = &block.statements;
 
         for stmt in stmts {
             self.compile_statement(&stmt)
         }
-
-        self.pop_scope();
     }
 
     fn get_inst_addr(&self) -> BMaddr {
@@ -826,50 +821,71 @@ impl<'a> BasmCompiler<'a> {
             addr: inst_addr,
         });
 
+        self.push_scope();
+
+        // iterate params in reverse order, since they are 
+        // pushed in order on the operand stack
+        for param in proc_def.params.iter().rev() {
+            let compiled_var = self.compile_var( 
+                param.param_name,
+                param.param_type,
+                VarStorageKind::Stack,
+                param.loc );
+
+            // push parameter into the frame
+            self.basm_push_inst(BasmInstruction::SWAP, 1);
+            self.compile_get_var_addr(&compiled_var);
+            self.basm_push_inst(BasmInstruction::SWAP, 1);
+            self.compile_typed_write(compiled_var.var_type, &compiled_var.loc);
+
+        }
+
+
         self.compile_block(&body);
+        self.pop_scope();
+
         self.basm_push_inst(BasmInstruction::RET, 0);
     }
 
-    fn compile_var_def(
-        &mut self,
-        var_def: &'a AstVarDef,
-        storage: VarStorageKind,
-    ) {
-        // println!("compile_var_def {} {:?}", &var_def.name, &storage);
+    fn compile_var( &mut self,
+                    var_name: &'a str, 
+                    var_type : AstTypes, 
+                    storage: VarStorageKind,
+                    loc : Location<'a> ) -> CompiledVar<'a> {
 
-        // AF TODO add explicit check if type is known, now only checks
-        // on type size
-        let var_size = get_type_size(var_def.var_type);
+        let var_size = get_type_size(var_type);
 
+        // check for type of zero size (e.g. Void)
         if var_size == 0 {
             user_error!(
                 "{} definining a variable of type {} is not allowed",
-                &var_def.loc.fmt_err(),
-                type_to_str(var_def.var_type)
+                &loc.fmt_err(),
+                type_to_str(var_type)
             );
         }
 
         // check if var already exists
         let scope = self.scopes.front().expect("Internal error, expect scope");
 
-        // if let Some(existing_var) =
-        //     self.scope_get_compiled_var_by_name(&scope, &var_def.name)
-        // {
-        //     user_error!(
-        //         "{} variable with name {} is previously defined overhere {}",
-        //         &var_def.loc.fmt_err(),
-        //         &var_def.name,
-        //         &existing_var.def.loc.fmt_err(),
-        //     );
-        // }
+        if let Some(existing_var) =
+            self.scope_get_compiled_var_by_name(&scope, &var_name)
+        {
+            user_error!(
+                "{} variable with name {} is previously defined overhere {}",
+                &loc.fmt_err(),
+                &var_name,
+                &existing_var.loc.fmt_err(),
+            );
+        }
 
         // TODO(#480): bang does not warn about unused variables
 
         // Shadowed Var Warning
-        // if let Some(shadow_var) = self.get_compiled_var_by_name(&var_def.name) {
-        //     // AF TODO for now make it an error
-        //     user_error!("ERROR: shadow variable: {}", shadow_var.def.name);
-        // }
+        if let Some(shadow_var) = self.get_compiled_var_by_name(&var_name) {
+            // AF TODO for now make it an error
+            user_error!("ERROR: shadow variable: {}", shadow_var.name);
+        }
+
 
         // addr depends on the storage type
         let compiled_var = match storage {
@@ -877,23 +893,15 @@ impl<'a> BasmCompiler<'a> {
                 let zero_vec = vec![0; var_size];
                 let (addr, _) = self.push_buffer_to_memory(&zero_vec);
 
-                // TODO(#476): global variables cannot be initialized at the moment
-                if var_def.init_expr.is_some() {
-                    user_error!(
-                        "{} init variables not yet supported {}",
-                        &var_def.loc.fmt_err(),
-                        var_def.name
-                    );
-                }
 
                 // #[allow(clippy::cast_possible_truncation)]
                 // #[allow(clippy::cast_sign_loss)]
                 let compiled_var = CompiledVar {
                     addr : addr as BMaddr,
                     storage,
-                    name : var_def.name,
-                    var_type : var_def.var_type,
-                    loc : var_def.loc
+                    name : var_name,
+                    var_type,
+                    loc
                 };
                 compiled_var
             },
@@ -903,10 +911,58 @@ impl<'a> BasmCompiler<'a> {
                 let compiled_var = CompiledVar {
                     addr : self.frame_size as BMaddr,
                     storage,
-                    name : var_def.name,
-                    var_type : var_def.var_type,
-                    loc : var_def.loc
+                    name : var_name,
+                    var_type,
+                    loc
                 };
+
+                // #[allow(clippy::cast_possible_truncation)]
+                // #[allow(clippy::cast_sign_loss)]
+                compiled_var 
+            },
+        };
+
+        // add variable to the current scope
+        //let scopes = self.scopes.len();
+        if let Some(scope) = self.scopes.front_mut() {
+            // println!(
+            //     "add variable {} to scope {}",
+            //     &compiled_var.def.name, scopes
+            // );
+            scope.add_compiled_var(var_name, compiled_var);
+        } else {
+            internal_error!("Epxected scope to store variable");
+        }
+
+        compiled_var
+    }
+
+    fn compile_var_def(
+        &mut self,
+        var_def: &'a AstVarDef,
+        storage: VarStorageKind,
+    ) {
+
+        let compiled_var= self.compile_var(
+            var_def.name,
+            var_def.var_type, 
+            storage,
+            var_def.loc );
+
+        // addr depends on the storage type
+        match storage {
+            VarStorageKind::Static => {
+
+                // TODO(#476): global variables cannot be initialized at the moment
+                if var_def.init_expr.is_some() {
+                    user_error!(
+                        "{} init variables not yet supported {}",
+                        &var_def.loc.fmt_err(),
+                        var_def.name
+                    );
+                }
+            },
+            VarStorageKind::Stack => {
 
                 if let Some(init_expr) = &var_def.init_expr {
 
@@ -925,23 +981,9 @@ impl<'a> BasmCompiler<'a> {
                         );
                     }        
                 }                
-                // #[allow(clippy::cast_possible_truncation)]
-                // #[allow(clippy::cast_sign_loss)]
-                compiled_var 
             },
-        };
 
-        // add variable to the current scope
-        //let scopes = self.scopes.len();
-        if let Some(scope) = self.scopes.front_mut() {
-            // println!(
-            //     "add variable {} to scope {}",
-            //     &compiled_var.def.name, scopes
-            // );
-            scope.add_compiled_var(var_def.name, compiled_var);
-        } else {
-            internal_error!("Epxected scope to store variable");
-        }
+        };
     }
 
     fn compile_module(
@@ -1013,6 +1055,7 @@ impl<'a> BasmCompiler<'a> {
         &mut self,
         stack_size: usize,
     ) {
+
         let (_, addr) = self.allocate_buffer_memory(stack_size);
 
         let ptr_bytes = &addr.to_ne_bytes();

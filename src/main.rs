@@ -65,6 +65,8 @@ fn main() -> Result<()> {
         }
     }
 
+    println!("STACK SIZE {}", stack_size );    
+
     if input_file_path == PathBuf::default() {
         usage(&program_name);
         eprintln!("ERROR: no name for input file is ");
